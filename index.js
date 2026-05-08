@@ -11,20 +11,17 @@ app.get("/", (req, res) => {
   res.json({ status: "JAMPAN-XMD ONLINE 🚀" });
 });
 
-// 🔥 PAIR ENDPOINT (FIXED)
+// 🔥 PAIR ENDPOINT
 app.post("/pair", async (req, res) => {
   try {
     const { userId, phone } = req.body;
 
-    if (!userId || !phone) {
-      return res.status(400).json({ error: "Missing data" });
-    }
-
     const result = await createSession(userId, phone);
 
-    if (!result || result.error || !result.code) {
-      return res.status(500).json({
-        error: "Cannot get pair (try again in 5s)"
+    if (!result.code) {
+      return res.json({
+        success: false,
+        message: "Try again in few seconds"
       });
     }
 
@@ -34,25 +31,22 @@ app.post("/pair", async (req, res) => {
     });
 
   } catch (err) {
-    console.log("PAIR ERROR:", err);
-
-    return res.status(500).json({
-      error: "Server error"
-    });
+    console.log(err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// 🔥 STATUS FIXED (no fake "no session")
+// 🔥 STATUS ENDPOINT
 app.get("/status/:userId", (req, res) => {
   const session = getSession(req.params.userId);
 
-  return res.json({
-    connected: session ? true : false
+  res.json({
+    connected: !!session
   });
 });
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("🚀 JAMPAN-XMD running on", PORT);
+  console.log("🚀 Running on", PORT);
 });
