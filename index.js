@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const fs = require("fs");
 
 const {
   default: makeWASocket,
@@ -7,182 +8,134 @@ const {
   DisconnectReason
 } = require("@whiskeysockets/baileys");
 
-const app = express();
+/* =========================
+   🔥 SESSION SAFETY FIX
+========================= */
+const sessionPath = "./session";
 
+// kama session ni file → delete
+if (
+  fs.existsSync(sessionPath) &&
+  !fs.lstatSync(sessionPath).isDirectory()
+) {
+  fs.unlinkSync(sessionPath);
+}
+
+// hakikisha ni folder
+if (!fs.existsSync(sessionPath)) {
+  fs.mkdirSync(sessionPath, { recursive: true });
+}
+
+/* =========================
+   EXPRESS SETUP
+========================= */
+const app = express();
 app.use(cors());
 app.use(express.json());
 
 /* =========================
-   GLOBAL STATE
+   BOT STATE
 ========================= */
-let sock = null;
-
-const state = {
-  connected: false,
-  connecting: false,
-  lastPairRequest: 0
-};
+let sock;
+let botReady = false;
+let connecting = false;
+let lastPair = 0;
 
 /* =========================
-   CREATE SOCKET
+   START BOT
 ========================= */
-async function createSocket() {
+async function startBot() {
 
-  if (state.connecting) return;
-
-  state.connecting = true;
+  if (connecting) return;
+  connecting = true;
 
   try {
 
-    const {
-      state: authState,
-      saveCreds
-    } = await useMultiFileAuthState("session");
+    const { state, saveCreds } =
+      await useMultiFileAuthState("./session");
 
     sock = makeWASocket({
-      auth: authState,
+      auth: state,
       printQRInTerminal: false,
-      browser: ["JAMPAN XMD", "Chrome", "1.0.0"]
+      browser: ["Ubuntu", "Chrome", "20.0.04"]
     });
 
     sock.ev.on("creds.update", saveCreds);
 
-    sock.ev.on("connection.update", async(update) => {
+    sock.ev.on("connection.update", (update) => {
 
-      const {
-        connection,
-        lastDisconnect
-      } = update;
+      const { connection, lastDisconnect } = update;
 
-      /* CONNECTED */
       if (connection === "open") {
-
-        state.connected = true;
-        state.connecting = false;
-
-        console.log("✅ JAMPAN XMD CONNECTED");
-
+        botReady = true;
+        connecting = false;
+        console.log("✅ BOT ONLINE");
       }
 
-      /* CLOSED */
       if (connection === "close") {
+        botReady = false;
+        connecting = false;
 
-        state.connected = false;
-        state.connecting = false;
-
-        const reason =
+        const code =
           lastDisconnect?.error?.output?.statusCode;
 
-        console.log("❌ CONNECTION CLOSED:", reason);
+        console.log("❌ CLOSED:", code);
 
-        /* SAFE RECONNECT */
-        if (
-          reason !== DisconnectReason.loggedOut
-        ) {
-
-          console.log("🔄 Reconnecting safely...");
-
-          setTimeout(() => {
-            createSocket();
-          }, 10000);
-
+        if (code !== DisconnectReason.loggedOut) {
+          setTimeout(startBot, 8000);
         }
-
       }
 
     });
 
-  } catch(err) {
-
-    state.connecting = false;
-
+  } catch (err) {
     console.log("BOT ERROR:", err);
+    connecting = false;
 
-    /* SAFE RETRY */
-    setTimeout(() => {
-      createSocket();
-    }, 15000);
-
+    setTimeout(startBot, 10000);
   }
 
 }
 
-/* START */
-createSocket();
+/* START BOT */
+startBot();
 
 /* =========================
    HOME
 ========================= */
 app.get("/", (req, res) => {
-
-  res.send(`
-    <h1>🚀 JAMPAN XMD PRO SERVER</h1>
-    <p>Status: ${state.connected ? "ONLINE" : "STARTING"}</p>
-  `);
-
+  res.send("🚀 JAMPAN XMD PRO RUNNING");
 });
 
 /* =========================
    STATUS
 ========================= */
 app.get("/status", (req, res) => {
-
   res.json({
-    bot: state.connected ? "online" : "starting",
-    owner: "Kelvin Jampan",
-    version: "PRO"
+    bot: botReady ? "online" : "starting"
   });
-
 });
 
 /* =========================
-   PAIR SYSTEM
+   PAIR ROUTE
 ========================= */
-app.get("/pair", async(req, res) => {
+app.get("/pair", async (req, res) => {
 
   const number = req.query.number;
 
   if (!number) {
-
-    return res.json({
-      error: "Number required"
-    });
-
+    return res.json({ error: "Number required" });
   }
 
-  /* FORMAT CHECK */
-  if (
-    number.startsWith("+") ||
-    number.startsWith("0")
-  ) {
-
-    return res.json({
-      error: "Use international format 255xxxxxxxxx"
-    });
-
+  if (!botReady || !sock) {
+    return res.json({ error: "Bot still starting" });
   }
 
-  /* CONNECTION CHECK */
-  if (!state.connected || !sock) {
-
-    return res.json({
-      error: "Bot still starting"
-    });
-
+  if (Date.now() - lastPair < 20000) {
+    return res.json({ error: "Wait 20 seconds" });
   }
 
-  /* ANTI SPAM */
-  if (
-    Date.now() - state.lastPairRequest < 20000
-  ) {
-
-    return res.json({
-      error: "Wait 20 seconds before requesting another code"
-    });
-
-  }
-
-  state.lastPairRequest = Date.now();
+  lastPair = Date.now();
 
   try {
 
@@ -190,19 +143,14 @@ app.get("/pair", async(req, res) => {
       await sock.requestPairingCode(number);
 
     res.json({
-      status: "success",
       number,
-      code
+      code,
+      status: "success"
     });
 
-  } catch(err) {
-
+  } catch (err) {
     console.log("PAIR ERROR:", err);
-
-    res.json({
-      error: "Pair generation failed"
-    });
-
+    res.json({ error: "Pair failed" });
   }
 
 });
@@ -211,23 +159,14 @@ app.get("/pair", async(req, res) => {
    404
 ========================= */
 app.use((req, res) => {
-
-  res.status(404).json({
-    error: "Route not found"
-  });
-
+  res.status(404).json({ error: "Not found" });
 });
 
 /* =========================
-   SERVER
+   SERVER START
 ========================= */
-const PORT =
-  process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-
-  console.log(
-    "🚀 SERVER RUNNING ON PORT " + PORT
-  );
-
+  console.log("🚀 SERVER RUNNING ON PORT " + PORT);
 });
