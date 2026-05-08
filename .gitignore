@@ -1,2 +1,3 @@
-session/
+session/*
+!session/.keep
 node_modules/
