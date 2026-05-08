@@ -16,110 +16,173 @@ app.use(express.json());
    GLOBAL STATE
 ========================= */
 let sock = null;
-let botReady = false;
-let isConnecting = false;
-let lastPairTime = 0;
+
+const state = {
+  connected: false,
+  connecting: false,
+  lastPairRequest: 0
+};
 
 /* =========================
-   START BOT (SAFE)
+   CREATE SOCKET
 ========================= */
-async function startBot() {
+async function createSocket() {
 
-  if (isConnecting) return;
-  isConnecting = true;
+  if (state.connecting) return;
+
+  state.connecting = true;
 
   try {
 
-    const { state, saveCreds } =
-      await useMultiFileAuthState("session");
+    const {
+      state: authState,
+      saveCreds
+    } = await useMultiFileAuthState("session");
 
     sock = makeWASocket({
-      auth: state,
-      printQRInTerminal: false
+      auth: authState,
+      printQRInTerminal: false,
+      browser: ["JAMPAN XMD", "Chrome", "1.0.0"]
     });
 
     sock.ev.on("creds.update", saveCreds);
 
-    sock.ev.on("connection.update", (update) => {
+    sock.ev.on("connection.update", async(update) => {
 
-      const { connection, lastDisconnect } = update;
+      const {
+        connection,
+        lastDisconnect
+      } = update;
 
+      /* CONNECTED */
       if (connection === "open") {
-        console.log("✅ BOT ONLINE");
-        botReady = true;
-        isConnecting = false;
+
+        state.connected = true;
+        state.connecting = false;
+
+        console.log("✅ JAMPAN XMD CONNECTED");
+
       }
 
+      /* CLOSED */
       if (connection === "close") {
 
-        botReady = false;
-        isConnecting = false;
+        state.connected = false;
+        state.connecting = false;
 
-        const status =
+        const reason =
           lastDisconnect?.error?.output?.statusCode;
 
-        if (status === DisconnectReason.loggedOut) {
-          console.log("⚠️ Logged out - session removed");
-        } else {
-          console.log("⚠️ Connection closed safely (no loop)");
+        console.log("❌ CONNECTION CLOSED:", reason);
+
+        /* SAFE RECONNECT */
+        if (
+          reason !== DisconnectReason.loggedOut
+        ) {
+
+          console.log("🔄 Reconnecting safely...");
+
+          setTimeout(() => {
+            createSocket();
+          }, 10000);
+
         }
 
       }
 
     });
 
-  } catch (err) {
+  } catch(err) {
+
+    state.connecting = false;
+
     console.log("BOT ERROR:", err);
-    isConnecting = false;
+
+    /* SAFE RETRY */
+    setTimeout(() => {
+      createSocket();
+    }, 15000);
+
   }
+
 }
 
-/* START ONCE */
-startBot();
+/* START */
+createSocket();
 
 /* =========================
-   HOME ROUTE
+   HOME
 ========================= */
 app.get("/", (req, res) => {
-  res.send("🚀 JAMPAN XMD BOT RUNNING");
+
+  res.send(`
+    <h1>🚀 JAMPAN XMD PRO SERVER</h1>
+    <p>Status: ${state.connected ? "ONLINE" : "STARTING"}</p>
+  `);
+
 });
 
 /* =========================
    STATUS
 ========================= */
 app.get("/status", (req, res) => {
+
   res.json({
-    bot: botReady ? "online" : "starting"
+    bot: state.connected ? "online" : "starting",
+    owner: "Kelvin Jampan",
+    version: "PRO"
   });
+
 });
 
 /* =========================
-   PAIR SYSTEM (FIXED)
+   PAIR SYSTEM
 ========================= */
-app.get("/pair", async (req, res) => {
+app.get("/pair", async(req, res) => {
 
   const number = req.query.number;
 
   if (!number) {
+
     return res.json({
       error: "Number required"
     });
+
   }
 
-  if (!botReady || !sock) {
+  /* FORMAT CHECK */
+  if (
+    number.startsWith("+") ||
+    number.startsWith("0")
+  ) {
+
     return res.json({
-      error: "Bot not ready yet, wait few seconds"
+      error: "Use international format 255xxxxxxxxx"
     });
+
   }
 
-  /* 🔥 ANTI-SPAM COOLDOWN */
-  if (Date.now() - lastPairTime < 15000) {
+  /* CONNECTION CHECK */
+  if (!state.connected || !sock) {
+
     return res.json({
-      error: "Wait 15 seconds before requesting again"
+      error: "Bot still starting"
     });
+
   }
 
-  lastPairTime = Date.now();
+  /* ANTI SPAM */
+  if (
+    Date.now() - state.lastPairRequest < 20000
+  ) {
+
+    return res.json({
+      error: "Wait 20 seconds before requesting another code"
+    });
+
+  }
+
+  state.lastPairRequest = Date.now();
 
   try {
 
@@ -127,17 +190,17 @@ app.get("/pair", async (req, res) => {
       await sock.requestPairingCode(number);
 
     res.json({
+      status: "success",
       number,
-      code,
-      status: "success"
+      code
     });
 
-  } catch (err) {
+  } catch(err) {
 
     console.log("PAIR ERROR:", err);
 
     res.json({
-      error: "Pair failed (reset session if repeated)"
+      error: "Pair generation failed"
     });
 
   }
@@ -145,19 +208,26 @@ app.get("/pair", async (req, res) => {
 });
 
 /* =========================
-   404 HANDLER
+   404
 ========================= */
 app.use((req, res) => {
+
   res.status(404).json({
     error: "Route not found"
   });
+
 });
 
 /* =========================
-   SERVER START
+   SERVER
 ========================= */
-const PORT = process.env.PORT || 3000;
+const PORT =
+  process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("🚀 SERVER RUNNING ON PORT " + PORT);
+
+  console.log(
+    "🚀 SERVER RUNNING ON PORT " + PORT
+  );
+
 });
