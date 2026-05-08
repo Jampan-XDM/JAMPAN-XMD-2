@@ -76,9 +76,9 @@ app.get("/pair", async (req, res) => {
     return res.json({ error: "Number required" });
   }
 
-  if (!sock || !sock.user) {
+  if (!botReady) {
     return res.json({
-      error: "Bot not ready yet"
+      error: "Bot not ready, wait 10–20 seconds"
     });
   }
 
@@ -88,14 +88,14 @@ app.get("/pair", async (req, res) => {
     res.json({
       number,
       code,
-      status: "Pair code generated"
+      status: "ready"
     });
 
   } catch (err) {
     console.log(err);
 
     res.json({
-      error: "Failed to generate code"
+      error: "Pair failed"
     });
   }
 });
