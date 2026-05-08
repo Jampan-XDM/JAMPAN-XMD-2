@@ -9,32 +9,33 @@ const {
 } = require("@whiskeysockets/baileys");
 
 /* =========================
-   🔥 SESSION SAFETY FIX
+   🔥 FORCE SESSION SAFETY
 ========================= */
 const sessionPath = "./session";
 
-// kama session ni file → delete
+// ensure folder always exists
+if (!fs.existsSync(sessionPath)) {
+  fs.mkdirSync(sessionPath, { recursive: true });
+}
+
+// if something breaks session into file → fix it
 if (
   fs.existsSync(sessionPath) &&
   !fs.lstatSync(sessionPath).isDirectory()
 ) {
   fs.unlinkSync(sessionPath);
-}
-
-// hakikisha ni folder
-if (!fs.existsSync(sessionPath)) {
   fs.mkdirSync(sessionPath, { recursive: true });
 }
 
 /* =========================
-   EXPRESS SETUP
+   APP SETUP
 ========================= */
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 /* =========================
-   BOT STATE
+   STATE
 ========================= */
 let sock;
 let botReady = false;
@@ -42,15 +43,13 @@ let connecting = false;
 let lastPair = 0;
 
 /* =========================
-   START BOT
+   START BOT (SAFE CORE)
 ========================= */
 async function startBot() {
-
   if (connecting) return;
   connecting = true;
 
   try {
-
     const { state, saveCreds } =
       await useMultiFileAuthState("./session");
 
@@ -63,7 +62,6 @@ async function startBot() {
     sock.ev.on("creds.update", saveCreds);
 
     sock.ev.on("connection.update", (update) => {
-
       const { connection, lastDisconnect } = update;
 
       if (connection === "open") {
@@ -85,7 +83,6 @@ async function startBot() {
           setTimeout(startBot, 8000);
         }
       }
-
     });
 
   } catch (err) {
@@ -94,33 +91,27 @@ async function startBot() {
 
     setTimeout(startBot, 10000);
   }
-
 }
 
-/* START BOT */
+/* =========================
+   START BOT ON BOOT
+========================= */
 startBot();
 
 /* =========================
-   HOME
+   ROUTES
 ========================= */
 app.get("/", (req, res) => {
-  res.send("🚀 JAMPAN XMD PRO RUNNING");
+  res.send("🚀 JAMPAN XMD PRO SERVER");
 });
 
-/* =========================
-   STATUS
-========================= */
 app.get("/status", (req, res) => {
   res.json({
     bot: botReady ? "online" : "starting"
   });
 });
 
-/* =========================
-   PAIR ROUTE
-========================= */
 app.get("/pair", async (req, res) => {
-
   const number = req.query.number;
 
   if (!number) {
@@ -138,21 +129,18 @@ app.get("/pair", async (req, res) => {
   lastPair = Date.now();
 
   try {
-
-    const code =
-      await sock.requestPairingCode(number);
+    const code = await sock.requestPairingCode(number);
 
     res.json({
+      status: "success",
       number,
-      code,
-      status: "success"
+      code
     });
 
   } catch (err) {
     console.log("PAIR ERROR:", err);
     res.json({ error: "Pair failed" });
   }
-
 });
 
 /* =========================
@@ -163,7 +151,7 @@ app.use((req, res) => {
 });
 
 /* =========================
-   SERVER START
+   SERVER
 ========================= */
 const PORT = process.env.PORT || 3000;
 
