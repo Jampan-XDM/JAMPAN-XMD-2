@@ -1,19 +1,17 @@
 import express from "express";
 import cors from "cors";
-import { startSession, getSession } from "./lib/wa.js";
+import { createPairSession, getSession } from "./lib/pair.js";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// 🟢 HEALTH
 app.get("/", (req, res) => {
-  res.json({ status: "JAMPAN-XMD RUNNING 🚀" });
+  res.json({ status: "JAMPAN-XMD ONLINE 🚀" });
 });
 
-
-// 🔥 PAIR CODE ROUTE (FIXED)
+// 🔥 PAIR ROUTE (CLEAN NOW)
 app.post("/pair", async (req, res) => {
   try {
     const { userId, phone } = req.body;
@@ -22,33 +20,33 @@ app.post("/pair", async (req, res) => {
       return res.status(400).json({ error: "Missing data" });
     }
 
-    const { code } = await startSession(userId, phone);
+    const result = await createPairSession(userId, phone);
 
-    if (!code) {
+    if (!result || result.error || !result.code) {
       return res.status(500).json({
-        error: "Cannot get pair (try again in few seconds)"
+        error: "Cannot generate pair code"
       });
     }
 
     return res.json({
       success: true,
-      pairingCode: code
+      pairingCode: result.code
     });
 
   } catch (err) {
-    console.log("PAIR ERROR:", err);
+    console.log("SERVER ERROR:", err);
+
     return res.status(500).json({
-      error: "Cannot get pair"
+      error: "Server error"
     });
   }
 });
 
-
-// 🔥 STATUS ROUTE (FRONTEND LIVE CHECK)
+// 🔥 STATUS CHECK
 app.get("/status/:userId", (req, res) => {
   const session = getSession(req.params.userId);
 
-  return res.json({
+  res.json({
     connected: !!session
   });
 });
@@ -56,5 +54,5 @@ app.get("/status/:userId", (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("🚀 JAMPAN-XMD Backend running on port", PORT);
+  console.log("🚀 JAMPAN-XMD running on", PORT);
 });
