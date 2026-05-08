@@ -1,14 +1,17 @@
 {
-  "name": "JAMPAN XMD PRO",
-  "description": "Stable WhatsApp Pairing Bot",
-  "logo": "https://files.catbox.moe/fzjhed.png",
-  "keywords": [
-    "whatsapp",
-    "baileys",
-    "bot",
-    "pairing"
-  ],
+  "name": "JAMPAN-XMD",
+  "description": "Stable WhatsApp Pairing Bot (Baileys SaaS Backend)",
   "repository": "https://github.com/Jampan-XDM/JAMPAN-XMD-2",
+  "logo": "https://files.catbox.moe/fzjhed.png",
+  "keywords": ["whatsapp", "bot", "baileys", "pairing", "saas"],
+  "env": {
+    "NODE_ENV": {
+      "value": "production"
+    },
+    "PORT": {
+      "value": "3000"
+    }
+  },
   "buildpacks": [
     {
       "url": "heroku/nodejs"
