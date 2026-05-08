@@ -1,167 +1,51 @@
-const express = require("express");
-const cors = require("cors");
-const fs = require("fs");
+import express from "express";
+import cors from "cors";
+import { config } from "./config.js";
+import { createSession, getSession } from "./lib/whatsapp.js";
 
-const {
-  default: makeWASocket,
-  useMultiFileAuthState,
-  DisconnectReason
-} = require("@whiskeysockets/baileys");
-
-/* =========================
-   🔥 SESSION FIX (CRITICAL)
-========================= */
-const sessionPath = "./session";
-
-// hakikisha folder ipo
-if (!fs.existsSync(sessionPath)) {
-  fs.mkdirSync(sessionPath, { recursive: true });
-}
-
-// kama imekuwa file accidentally
-if (
-  fs.existsSync(sessionPath) &&
-  !fs.lstatSync(sessionPath).isDirectory()
-) {
-  fs.unlinkSync(sessionPath);
-  fs.mkdirSync(sessionPath, { recursive: true });
-}
-
-/* =========================
-   EXPRESS SETUP
-========================= */
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-/* =========================
-   STATE
-========================= */
-let sock;
-let connected = false;
-let connecting = false;
-let lastPairTime = 0;
+// 🔥 HEALTH CHECK
+app.get("/", (req, res) => {
+  res.json({ status: "JAMPAN-XMD Backend Running 🚀" });
+});
 
-/* =========================
-   START BOT
-========================= */
-async function startBot() {
 
-  if (connecting) return;
-  connecting = true;
-
+// 🔥 CREATE PAIR CODE
+app.post("/pair", async (req, res) => {
   try {
+    const { userId, phone } = req.body;
 
-    const { state, saveCreds } =
-      await useMultiFileAuthState("./session");
+    if (!userId || !phone) {
+      return res.json({ error: "Missing userId or phone" });
+    }
 
-    sock = makeWASocket({
-      auth: state,
-      printQRInTerminal: false,
-      browser: ["Ubuntu", "Chrome", "22.0.0"]
-    });
+    const { code } = await createSession(userId, phone);
 
-    sock.ev.on("creds.update", saveCreds);
-
-    sock.ev.on("connection.update", (update) => {
-
-      const { connection, lastDisconnect } = update;
-
-      if (connection === "open") {
-        connected = true;
-        connecting = false;
-        console.log("✅ BOT ONLINE");
-      }
-
-      if (connection === "close") {
-        connected = false;
-        connecting = false;
-
-        const code =
-          lastDisconnect?.error?.output?.statusCode;
-
-        console.log("❌ CLOSED:", code);
-
-        if (code !== DisconnectReason.loggedOut) {
-          setTimeout(startBot, 8000);
-        }
-      }
-
+    res.json({
+      success: true,
+      pairingCode: code
     });
 
   } catch (err) {
-    console.log("BOT ERROR:", err);
-    connecting = false;
-
-    setTimeout(startBot, 10000);
+    console.log(err);
+    res.json({ error: "Failed to create pair code" });
   }
-
-}
-
-/* START */
-startBot();
-
-/* =========================
-   ROUTES
-========================= */
-app.get("/", (req, res) => {
-  res.send("🚀 JAMPAN XMD RUNNING (BAILEYS STABLE)");
 });
 
-app.get("/status", (req, res) => {
+
+// 🔥 CHECK STATUS
+app.get("/status/:userId", (req, res) => {
+  const session = getSession(req.params.userId);
+
   res.json({
-    bot: connected ? "online" : "starting"
+    connected: !!session
   });
 });
 
-app.get("/pair", async (req, res) => {
-
-  const number = req.query.number;
-
-  if (!number) {
-    return res.json({ error: "Number required" });
-  }
-
-  if (!connected || !sock) {
-    return res.json({ error: "Bot still starting" });
-  }
-
-  if (Date.now() - lastPairTime < 20000) {
-    return res.json({ error: "Wait 20 seconds" });
-  }
-
-  lastPairTime = Date.now();
-
-  try {
-
-    const code =
-      await sock.requestPairingCode(number);
-
-    res.json({
-      status: "success",
-      number,
-      code
-    });
-
-  } catch (err) {
-    console.log("PAIR ERROR:", err);
-    res.json({ error: "Pair failed" });
-  }
-
-});
-
-/* =========================
-   404
-========================= */
-app.use((req, res) => {
-  res.status(404).json({ error: "Not found" });
-});
-
-/* =========================
-   SERVER START
-========================= */
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("🚀 SERVER RUNNING ON PORT " + PORT);
+app.listen(config.port, () => {
+  console.log(`🚀 JAMPAN-XMD running on port ${config.port}`);
 });
