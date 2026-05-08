@@ -7,9 +7,6 @@
   "env": {
     "NODE_ENV": {
       "value": "production"
-    },
-    "PORT": {
-      "value": "3000"
     }
   },
   "buildpacks": [
