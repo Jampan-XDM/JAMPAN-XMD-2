@@ -1,23 +1,14 @@
 {
-  "name": "JAMPAN XMD ROG",
-  "description": "WhatsApp Pairing Bot System with ROG Aura UI",
-  "logo": "https://files.catbox.moe/ncnfg0.png",
+  "name": "JAMPAN XMD PRO",
+  "description": "Stable WhatsApp Pairing Bot",
+  "logo": "https://files.catbox.moe/fzjhed.png",
   "keywords": [
     "whatsapp",
-    "bot",
     "baileys",
-    "pairing",
-    "rog",
-    "jampan-xmd"
+    "bot",
+    "pairing"
   ],
   "repository": "https://github.com/Jampan-XDM/JAMPAN-XMD-2",
-  "website": "https://rog.asus.com/",
-  "formation": {
-    "web": {
-      "quantity": 1,
-      "size": "basic"
-    }
-  },
   "buildpacks": [
     {
       "url": "heroku/nodejs"
