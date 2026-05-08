@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { createPairSession, getSession } from "./lib/pair.js";
+import { createSession, getSession } from "./lib/pair.js";
 
 const app = express();
 
@@ -11,7 +11,7 @@ app.get("/", (req, res) => {
   res.json({ status: "JAMPAN-XMD ONLINE 🚀" });
 });
 
-// 🔥 PAIR ROUTE (CLEAN NOW)
+// 🔥 PAIR ENDPOINT (FIXED)
 app.post("/pair", async (req, res) => {
   try {
     const { userId, phone } = req.body;
@@ -20,11 +20,11 @@ app.post("/pair", async (req, res) => {
       return res.status(400).json({ error: "Missing data" });
     }
 
-    const result = await createPairSession(userId, phone);
+    const result = await createSession(userId, phone);
 
     if (!result || result.error || !result.code) {
       return res.status(500).json({
-        error: "Cannot generate pair code"
+        error: "Cannot get pair (try again in 5s)"
       });
     }
 
@@ -34,7 +34,7 @@ app.post("/pair", async (req, res) => {
     });
 
   } catch (err) {
-    console.log("SERVER ERROR:", err);
+    console.log("PAIR ERROR:", err);
 
     return res.status(500).json({
       error: "Server error"
@@ -42,12 +42,12 @@ app.post("/pair", async (req, res) => {
   }
 });
 
-// 🔥 STATUS CHECK
+// 🔥 STATUS FIXED (no fake "no session")
 app.get("/status/:userId", (req, res) => {
   const session = getSession(req.params.userId);
 
-  res.json({
-    connected: !!session
+  return res.json({
+    connected: session ? true : false
   });
 });
 
