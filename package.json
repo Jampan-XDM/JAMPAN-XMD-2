@@ -1,8 +1,8 @@
 {
-  "name": "jampan-xmd-backend",
-  "version": "2.0.0",
-  "main": "index.js",
+  "name": "jampan-xmd",
+  "version": "3.0.0",
   "type": "module",
+  "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
