@@ -1,16 +1,15 @@
 {
-  "name": "jampan-xmd-pro",
+  "name": "jampan-xmd-backend",
   "version": "2.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js"
   },
-  "engines": {
-    "node": "22.x"
-  },
   "dependencies": {
-    "@whiskeysockets/baileys": "latest",
-    "cors": "^2.8.5",
-    "express": "^4.18.2"
+    "@whiskeysockets/baileys": "^6.7.9",
+    "express": "^4.19.2",
+    "pino": "^8.17.0",
+    "cors": "^2.8.5"
   }
 }
