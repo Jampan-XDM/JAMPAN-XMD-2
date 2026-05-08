@@ -1,6 +1,6 @@
 {
-  "name": "jampan-xmd-rog",
-  "version": "1.0.0",
+  "name": "jampan-xmd-pro",
+  "version": "2.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -9,8 +9,8 @@
     "node": "20.x"
   },
   "dependencies": {
-    "express": "^4.18.2",
+    "@whiskeysockets/baileys": "latest",
     "cors": "^2.8.5",
-    "@whiskeysockets/baileys": "latest"
+    "express": "^4.18.2"
   }
 }
