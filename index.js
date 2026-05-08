@@ -1,6 +1,10 @@
 import express from "express";
 import cors from "cors";
-import { createSession, getSession } from "./lib/pair.js";
+
+import {
+  createSession,
+  getSession
+} from "./lib/pair.js";
 
 const app = express();
 
@@ -8,21 +12,42 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.json({ status: "JAMPAN-XMD ONLINE 🚀" });
+  res.json({
+    status: "JAMPAN-XMD ONLINE 🚀"
+  });
 });
 
-// 🔥 PAIR ENDPOINT
+
+// 🔥 PAIR ROUTE
 app.post("/pair", async (req, res) => {
+
   try {
-    const { userId, phone } = req.body;
 
-    const result = await createSession(userId, phone);
+    const {
+      userId,
+      phone
+    } = req.body;
 
-    if (!result.code) {
-      return res.json({
+    if (!userId || !phone) {
+
+      return res.status(400).json({
         success: false,
-        message: "Try again in few seconds"
+        error: "Missing phone"
       });
+
+    }
+
+    const result =
+      await createSession(userId, phone);
+
+    // 🔥 IMPORTANT FIX
+    if (!result.success || !result.code) {
+
+      return res.status(500).json({
+        success: false,
+        error: "Cannot get pair code"
+      });
+
     }
 
     return res.json({
@@ -31,22 +56,38 @@ app.post("/pair", async (req, res) => {
     });
 
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: "Server error" });
+
+    console.log("SERVER ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      error: "Server error"
+    });
+
   }
+
 });
 
-// 🔥 STATUS ENDPOINT
-app.get("/status/:userId", (req, res) => {
-  const session = getSession(req.params.userId);
 
-  res.json({
+// 🔥 STATUS ROUTE
+app.get("/status/:userId", (req, res) => {
+
+  const session =
+    getSession(req.params.userId);
+
+  return res.json({
     connected: !!session
   });
+
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT =
+  process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("🚀 Running on", PORT);
+
+  console.log(
+    `🚀 JAMPAN-XMD running on ${PORT}`
+  );
+
 });
