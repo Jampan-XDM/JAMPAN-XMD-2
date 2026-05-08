@@ -20,3 +20,19 @@
 ---
 
 ## 📁 PROJECT STRUCTURE
+---
+
+## 🚀 DEPLOY TO HEROKU (1 CLICK)
+
+👉 Deploy your own copy instantly:
+
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://dashboard.heroku.com/new?template=https://github.com/Jampan-XDM/JAMPAN-XMD-2)
+
+---
+
+## ⚙️ MANUAL INSTALLATION
+
+### 1. Clone repo
+```bash
+git clone https://github.com/Jampan-XDM/JAMPAN-XMD-2
+cd JAMPAN-XMD-2
