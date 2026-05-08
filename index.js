@@ -9,16 +9,16 @@ const {
 } = require("@whiskeysockets/baileys");
 
 /* =========================
-   🔥 FORCE SESSION SAFETY
+   🔥 SESSION FIX (CRITICAL)
 ========================= */
 const sessionPath = "./session";
 
-// ensure folder always exists
+// hakikisha folder ipo
 if (!fs.existsSync(sessionPath)) {
   fs.mkdirSync(sessionPath, { recursive: true });
 }
 
-// if something breaks session into file → fix it
+// kama imekuwa file accidentally
 if (
   fs.existsSync(sessionPath) &&
   !fs.lstatSync(sessionPath).isDirectory()
@@ -28,7 +28,7 @@ if (
 }
 
 /* =========================
-   APP SETUP
+   EXPRESS SETUP
 ========================= */
 const app = express();
 app.use(cors());
@@ -38,40 +38,43 @@ app.use(express.json());
    STATE
 ========================= */
 let sock;
-let botReady = false;
+let connected = false;
 let connecting = false;
-let lastPair = 0;
+let lastPairTime = 0;
 
 /* =========================
-   START BOT (SAFE CORE)
+   START BOT
 ========================= */
 async function startBot() {
+
   if (connecting) return;
   connecting = true;
 
   try {
+
     const { state, saveCreds } =
       await useMultiFileAuthState("./session");
 
     sock = makeWASocket({
       auth: state,
       printQRInTerminal: false,
-      browser: ["Ubuntu", "Chrome", "20.0.04"]
+      browser: ["Ubuntu", "Chrome", "22.0.0"]
     });
 
     sock.ev.on("creds.update", saveCreds);
 
     sock.ev.on("connection.update", (update) => {
+
       const { connection, lastDisconnect } = update;
 
       if (connection === "open") {
-        botReady = true;
+        connected = true;
         connecting = false;
         console.log("✅ BOT ONLINE");
       }
 
       if (connection === "close") {
-        botReady = false;
+        connected = false;
         connecting = false;
 
         const code =
@@ -83,6 +86,7 @@ async function startBot() {
           setTimeout(startBot, 8000);
         }
       }
+
     });
 
   } catch (err) {
@@ -91,45 +95,47 @@ async function startBot() {
 
     setTimeout(startBot, 10000);
   }
+
 }
 
-/* =========================
-   START BOT ON BOOT
-========================= */
+/* START */
 startBot();
 
 /* =========================
    ROUTES
 ========================= */
 app.get("/", (req, res) => {
-  res.send("🚀 JAMPAN XMD PRO SERVER");
+  res.send("🚀 JAMPAN XMD RUNNING (BAILEYS STABLE)");
 });
 
 app.get("/status", (req, res) => {
   res.json({
-    bot: botReady ? "online" : "starting"
+    bot: connected ? "online" : "starting"
   });
 });
 
 app.get("/pair", async (req, res) => {
+
   const number = req.query.number;
 
   if (!number) {
     return res.json({ error: "Number required" });
   }
 
-  if (!botReady || !sock) {
+  if (!connected || !sock) {
     return res.json({ error: "Bot still starting" });
   }
 
-  if (Date.now() - lastPair < 20000) {
+  if (Date.now() - lastPairTime < 20000) {
     return res.json({ error: "Wait 20 seconds" });
   }
 
-  lastPair = Date.now();
+  lastPairTime = Date.now();
 
   try {
-    const code = await sock.requestPairingCode(number);
+
+    const code =
+      await sock.requestPairingCode(number);
 
     res.json({
       status: "success",
@@ -141,6 +147,7 @@ app.get("/pair", async (req, res) => {
     console.log("PAIR ERROR:", err);
     res.json({ error: "Pair failed" });
   }
+
 });
 
 /* =========================
@@ -151,7 +158,7 @@ app.use((req, res) => {
 });
 
 /* =========================
-   SERVER
+   SERVER START
 ========================= */
 const PORT = process.env.PORT || 3000;
 
