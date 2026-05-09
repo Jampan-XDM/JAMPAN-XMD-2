@@ -72,3 +72,18 @@ async function getPairCode(phoneNumber, res) {
 }
 
 module.exports = { getPairCode };
+
+const socket = makeWASocket({
+    auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
+    },
+    browser: Browsers.ubuntu("Chrome"),
+    // --- ONGEZA HIZI LINE CHINI KUPUNGUZA MZIGO ---
+    syncFullHistory: false,           // Usidownload chats za zamani
+    shouldSyncHistoryMessage: () => false, // Zuia kabisa kuanza kusync history
+    linkPreviewImageThumbnailWidth: 192, // Punguza ukubwa wa preview images
+    // ----------------------------------------------
+    logger: pino({ level: "fatal" }),
+});
+
