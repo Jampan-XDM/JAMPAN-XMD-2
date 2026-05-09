@@ -16,3 +16,6 @@
     "node": "20.x"
   }
 }
+"cacheDirectories": [
+  "node_modules"
+]
