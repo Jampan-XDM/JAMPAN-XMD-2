@@ -16,17 +16,24 @@ const commands = require('./command');
 const sessionPath = path.join(__dirname, 'session');
 
 async function startBot(phoneNumber, res) {
+
     if (!fs.existsSync(sessionPath)) {
         fs.mkdirSync(sessionPath, { recursive: true });
     }
 
-    const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
-    const { version } = await fetchLatestBaileysVersion();
+    const { state, saveCreds } =
+        await useMultiFileAuthState(sessionPath);
+
+    const { version } =
+        await fetchLatestBaileysVersion();
 
     const sock = makeWASocket({
         version,
         printQRInTerminal: false,
-        logger: pino({ level: 'silent' }),
+
+        logger: pino({
+            level: 'silent'
+        }),
 
         browser: Browsers.macOS('Chrome'),
 
@@ -51,70 +58,93 @@ async function startBot(phoneNumber, res) {
 
     sock.ev.on('creds.update', saveCreds);
 
-    // PAIR CODE FAST FIX
+    // FAST PAIR CODE
     if (!sock.authState.creds.registered) {
+
         await delay(1500);
 
-        const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
+        const cleanNumber =
+            phoneNumber.replace(/[^0-9]/g, '');
 
         try {
-            const code = await sock.requestPairingCode(cleanNumber);
+
+            const code =
+                await sock.requestPairingCode(cleanNumber);
 
             if (!res.headersSent) {
+
                 res.json({
                     status: true,
                     creator: 'Kelvin Jampan',
                     code: code.match(/.{1,4}/g).join('-')
                 });
+
             }
+
         } catch (err) {
-            console.log('PAIR ERROR:', err);
+
+            console.log(err);
 
             if (!res.headersSent) {
+
                 return res.status(500).json({
                     status: false,
                     error: 'Failed to generate pair code'
                 });
+
             }
         }
     }
 
     // CONNECTION EVENTS
     sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect } = update;
+
+        const {
+            connection,
+            lastDisconnect
+        } = update;
 
         if (connection === 'connecting') {
-            console.log('🔄 JAMPAN-XMD connecting...');
+            console.log('🔄 Connecting...');
         }
 
         if (connection === 'open') {
-            console.log('✅ JAMPAN-XMD connected instantly');
+
+            console.log('✅ Connected Successfully');
 
             await sock.sendMessage(sock.user.id, {
                 text:
                     '⚡ *JAMPAN-XMD CONNECTED*\n\n' +
                     '✅ Login successful\n' +
-                    '🚀 Speed optimized\n' +
-                    '💻 Browser: Chrome macOS\n' +
-                    '📦 Commands loaded successfully'
+                    '🚀 Fast Mode Enabled\n' +
+                    '💻 Chrome macOS\n' +
+                    '🔥 Commands Loaded'
             });
+
         }
 
         if (connection === 'close') {
-            const reason = lastDisconnect?.error?.output?.statusCode;
 
-            console.log('❌ Connection closed:', reason);
+            const reason =
+                lastDisconnect?.error?.output?.statusCode;
+
+            console.log('❌ Connection Closed:', reason);
 
             if (reason !== DisconnectReason.loggedOut) {
+
                 console.log('♻️ Reconnecting...');
+
                 startBot(phoneNumber, res);
+
             }
         }
     });
 
     // COMMAND HANDLER
     sock.ev.on('messages.upsert', async ({ messages }) => {
+
         try {
+
             const msg = messages[0];
 
             if (!msg.message) return;
@@ -132,14 +162,29 @@ async function startBot(phoneNumber, res) {
 
             if (!body.startsWith(prefix)) return;
 
-            const args = body.slice(prefix.length).trim().split(/ +/);
-            const command = args.shift().toLowerCase();
+            const args =
+                body.slice(prefix.length)
+                .trim()
+                .split(/ +/);
+
+            const command =
+                args.shift().toLowerCase();
 
             if (commands[command]) {
-                await commands[command](sock, from, args, msg);
+
+                await commands[command](
+                    sock,
+                    from,
+                    args,
+                    msg
+                );
+
             }
+
         } catch (err) {
+
             console.log('MESSAGE ERROR:', err);
+
         }
     });
 }
