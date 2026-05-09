@@ -1,37 +1,33 @@
-import express from "express";
-import pino from "pino";
-import {
+const express = require("express");
+const pino = require("pino");
+const {
   default: makeWASocket,
   useMultiFileAuthState,
   DisconnectReason
-} from "@whiskeysockets/baileys";
+} = require("@whiskeysockets/baileys");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.get("/", (req, res) => {
-  res.send("JAMPAN XMD BOT IS RUNNING 🚀");
+  res.send("JAMPAN XMD BOT ACTIVE 🚀");
 });
 
 app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
+  console.log("Server running on " + PORT);
 });
 
-// BOT START
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState("./session");
 
   const sock = makeWASocket({
     logger: pino({ level: "silent" }),
     auth: state,
-    printQRInTerminal: false,
-    browser: ["JAMPAN-XMD", "Chrome", "1.0.0"]
+    printQRInTerminal: false
   });
 
-  // SAVE SESSION
   sock.ev.on("creds.update", saveCreds);
 
-  // CONNECTION UPDATE
   sock.ev.on("connection.update", (update) => {
     const { connection, lastDisconnect } = update;
 
@@ -39,25 +35,26 @@ async function startBot() {
       const shouldReconnect =
         lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
 
-      console.log("Connection closed. Reconnecting...", shouldReconnect);
+      console.log("Reconnecting...", shouldReconnect);
 
-      if (shouldReconnect) {
-        startBot();
-      }
+      if (shouldReconnect) startBot();
     }
 
     if (connection === "open") {
-      console.log("✅ WhatsApp Connected Successfully");
+      console.log("✅ Bot Connected");
     }
   });
 
-  // 👇 PAIR CODE SYSTEM FIXED
   if (!sock.authState.creds.registered) {
     setTimeout(async () => {
-      let code = await sock.requestPairingCode(process.env.NUMBER);
-      console.log("PAIR CODE 👉 " + code);
-    }, 3000);
+      try {
+        let code = await sock.requestPairingCode(process.env.NUMBER);
+        console.log("PAIR CODE =>", code);
+      } catch (e) {
+        console.log("Pair error:", e);
+      }
+    }, 4000);
   }
 }
 
-startBot().catch(console.error);
+startBot();
