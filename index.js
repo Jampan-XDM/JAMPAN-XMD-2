@@ -1,68 +1,19 @@
-import express from "express";
-import cors from "cors";
-import { startPair, getSession } from "./lib/pair.js";
+const express = require('express');
+const path = require('path');
+const { getPairCode } = require('./pair');
+const config = require('./config');
 
 const app = express();
-
-app.use(cors());
-app.use(express.json());
-
-global.owner = "Kelvin Jampan";
-global.number = "255674229015";
-
-// ================= HOME
-app.get("/", (req, res) => {
-  res.json({ status: "JAMPAN-XMD PRO RUNNING 🚀" });
-});
-
-// ================= PRO PAIR ENDPOINT
-app.post("/pair", async (req, res) => {
-
-  const { userId, phone } = req.body;
-
-  if (!userId || !phone) {
-    return res.json({
-      success: false,
-      message: "Missing userId or phone"
-    });
-  }
-
-  const result = await startPair(userId, phone);
-
-  if (!result.success) {
-    return res.json({
-      success: false,
-      message: result.message || result.error
-    });
-  }
-
-  if (!result.code) {
-    return res.json({
-      success: false,
-      message: "Retrying... please wait 5 seconds"
-    });
-  }
-
-  return res.json({
-    success: true,
-    pairingCode: result.code
-  });
-
-});
-
-// ================= STATUS
-app.get("/status/:id", (req, res) => {
-
-  const s = getSession(req.params.id);
-
-  res.json({
-    connected: !!s
-  });
-
-});
-
 const PORT = process.env.PORT || 3000;
 
+app.use(express.static('public'));
+
+app.get('/pair', async (req, res) => {
+    let num = req.query.number;
+    if (!num) return res.status(400).send({ error: "Number required" });
+    await getPairCode(num, res);
+});
+
 app.listen(PORT, () => {
-  console.log("JAMPAN-XMD PRO RUNNING ON", PORT);
+    console.log(`⚡ JAMPAN-XMD SERVER RUNNING ON PORT ${PORT}`);
 });
