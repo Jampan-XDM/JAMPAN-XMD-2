@@ -2,16 +2,19 @@ const express = require('express');
 const cors = require('cors');
 
 const {
-    startBot
+    connectBot,
+    getPair
 } = require('./pair');
 
 const app = express();
 
 app.use(cors());
-app.use(express.json());
 
 const PORT =
     process.env.PORT || 3000;
+
+// START BOT ON SERVER START
+connectBot();
 
 app.get('/', (req, res) => {
 
@@ -32,13 +35,13 @@ app.get('/pair', async (req, res) => {
 
             return res.json({
                 status: false,
-                error: 'Number required'
+                error: 'Number missing'
             });
 
         }
 
         const code =
-            await startBot(number);
+            await getPair(number);
 
         return res.json({
 
@@ -67,7 +70,7 @@ app.get('/pair', async (req, res) => {
 app.listen(PORT, () => {
 
     console.log(
-        `🚀 Server running on ${PORT}`
+        `🚀 Running ${PORT}`
     );
 
 });
