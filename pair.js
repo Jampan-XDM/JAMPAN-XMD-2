@@ -3,176 +3,204 @@ const {
     useMultiFileAuthState,
     makeCacheableSignalKeyStore,
     Browsers,
-    DisconnectReason,
     fetchLatestBaileysVersion,
-    delay
+    DisconnectReason
 } = require('@whiskeysockets/baileys');
 
 const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
+
 const commands = require('./command');
 
-const sessionPath = path.join(__dirname, 'session');
+const sessionPath =
+    path.join(__dirname, 'session');
 
-async function startBot(phoneNumber, res) {
+async function startBot(number) {
 
     if (!fs.existsSync(sessionPath)) {
-        fs.mkdirSync(sessionPath, { recursive: true });
+        fs.mkdirSync(sessionPath, {
+            recursive: true
+        });
     }
 
-    const { state, saveCreds } =
-        await useMultiFileAuthState(sessionPath);
+    const {
+        state,
+        saveCreds
+    } = await useMultiFileAuthState(
+        sessionPath
+    );
 
     const { version } =
         await fetchLatestBaileysVersion();
 
     const sock = makeWASocket({
+
         version,
-        printQRInTerminal: false,
 
         logger: pino({
             level: 'silent'
         }),
 
-        browser: Browsers.macOS('Chrome'),
+        browser: Browsers.windows('Chrome'),
+
+        printQRInTerminal: false,
 
         auth: {
             creds: state.creds,
-            keys: makeCacheableSignalKeyStore(
-                state.keys,
-                pino({ level: 'silent' })
-            )
+
+            keys:
+                makeCacheableSignalKeyStore(
+                    state.keys,
+                    pino({ level: 'silent' })
+                )
         },
 
-        markOnlineOnConnect: false,
+        markOnlineOnConnect: true,
         syncFullHistory: false,
-        shouldSyncHistoryMessage: () => false,
-        defaultQueryTimeoutMs: 15000,
-        connectTimeoutMs: 20000,
+        defaultQueryTimeoutMs: 0,
+        connectTimeoutMs: 60000,
         keepAliveIntervalMs: 10000,
+        retryRequestDelayMs: 2000,
+        fireInitQueries: false,
         emitOwnEvents: false,
-        generateHighQualityLinkPreview: false,
-        retryRequestDelayMs: 250
+        generateHighQualityLinkPreview: false
     });
 
-    sock.ev.on('creds.update', saveCreds);
+    sock.ev.on(
+        'creds.update',
+        saveCreds
+    );
 
-    // FAST PAIR CODE
+    // FAST PAIR
+    let code;
+
     if (!sock.authState.creds.registered) {
 
-        await delay(1500);
+        code =
+            await sock.requestPairingCode(
+                number
+            );
 
-        const cleanNumber =
-            phoneNumber.replace(/[^0-9]/g, '');
-
-        try {
-
-            const code =
-                await sock.requestPairingCode(cleanNumber);
-
-            if (!res.headersSent) {
-
-                res.json({
-                    status: true,
-                    creator: 'Kelvin Jampan',
-                    code: code.match(/.{1,4}/g).join('-')
-                });
-
-            }
-
-        } catch (err) {
-
-            console.log(err);
-
-            if (!res.headersSent) {
-
-                return res.status(500).json({
-                    status: false,
-                    error: 'Failed to generate pair code'
-                });
-
-            }
-        }
+        console.log(
+            'PAIR CODE:',
+            code
+        );
     }
 
-    // CONNECTION EVENTS
-    sock.ev.on('connection.update', async (update) => {
+    sock.ev.on(
+        'connection.update',
+        async (update) => {
 
-        const {
-            connection,
-            lastDisconnect
-        } = update;
+            const {
+                connection,
+                lastDisconnect
+            } = update;
 
-        if (connection === 'connecting') {
-            console.log('🔄 Connecting...');
-        }
+            if (connection === 'connecting') {
 
-        if (connection === 'open') {
-
-            console.log('✅ Connected Successfully');
-
-            await sock.sendMessage(sock.user.id, {
-                text:
-                    '⚡ *JAMPAN-XMD CONNECTED*\n\n' +
-                    '✅ Login successful\n' +
-                    '🚀 Fast Mode Enabled\n' +
-                    '💻 Chrome macOS\n' +
-                    '🔥 Commands Loaded'
-            });
-
-        }
-
-        if (connection === 'close') {
-
-            const reason =
-                lastDisconnect?.error?.output?.statusCode;
-
-            console.log('❌ Connection Closed:', reason);
-
-            if (reason !== DisconnectReason.loggedOut) {
-
-                console.log('♻️ Reconnecting...');
-
-                startBot(phoneNumber, res);
+                console.log(
+                    '🔄 Connecting...'
+                );
 
             }
+
+            if (connection === 'open') {
+
+                console.log(
+                    '✅ Connected'
+                );
+
+                await sock.sendMessage(
+                    sock.user.id,
+                    {
+                        text:
+                            '⚡ JAMPAN-XMD CONNECTED\n\n' +
+                            '✅ Stable Login Success'
+                    }
+                );
+
+            }
+
+            if (connection === 'close') {
+
+                const reason =
+                    lastDisconnect?.error
+                    ?.output?.statusCode;
+
+                console.log(
+                    '❌ Closed:',
+                    reason
+                );
+
+                // SESSION EXPIRED
+                if (
+                    reason ===
+                    DisconnectReason.loggedOut
+                ) {
+
+                    fs.rmSync(
+                        sessionPath,
+                        {
+                            recursive: true,
+                            force: true
+                        }
+                    );
+
+                    console.log(
+                        '🗑 Session Deleted'
+                    );
+
+                } else {
+
+                    console.log(
+                        '♻️ Reconnecting...'
+                    );
+
+                    startBot(number);
+
+                }
+            }
         }
-    });
+    );
 
-    // COMMAND HANDLER
-    sock.ev.on('messages.upsert', async ({ messages }) => {
-
-        try {
+    // COMMANDS
+    sock.ev.on(
+        'messages.upsert',
+        async ({ messages }) => {
 
             const msg = messages[0];
 
             if (!msg.message) return;
             if (msg.key.fromMe) return;
 
-            const from = msg.key.remoteJid;
+            const from =
+                msg.key.remoteJid;
 
             const body =
                 msg.message.conversation ||
-                msg.message.extendedTextMessage?.text ||
-                msg.message.imageMessage?.caption ||
+                msg.message
+                .extendedTextMessage?.text ||
                 '';
 
             const prefix = '.';
 
-            if (!body.startsWith(prefix)) return;
+            if (
+                !body.startsWith(prefix)
+            ) return;
 
             const args =
-                body.slice(prefix.length)
+                body.slice(1)
                 .trim()
                 .split(/ +/);
 
             const command =
-                args.shift().toLowerCase();
+                args.shift()
+                .toLowerCase();
 
             if (commands[command]) {
 
-                await commands[command](
+                commands[command](
                     sock,
                     from,
                     args,
@@ -180,13 +208,10 @@ async function startBot(phoneNumber, res) {
                 );
 
             }
-
-        } catch (err) {
-
-            console.log('MESSAGE ERROR:', err);
-
         }
-    });
+    );
+
+    return code;
 }
 
 module.exports = {
