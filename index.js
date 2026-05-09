@@ -1,33 +1,42 @@
 import express from "express";
 import cors from "cors";
-import { startBot, getSession } from "./lib/pair.js";
+import { startPair, getSession } from "./lib/pair.js";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-global.ownerName = "Kelvin Jampan";
-global.ownerNumber = "255674229015";
+global.owner = "Kelvin Jampan";
+global.number = "255674229015";
 global.channel = "https://whatsapp.com/channel/0029Vb7fTNf3QxS8A6rbBB3S";
 global.thumb = "https://files.catbox.moe/fzjhed.png";
 
-// ---------------- HOME
+// ================= HOME
 app.get("/", (req, res) => {
-  res.json({ status: "JAMPAN-XMD RUNNING 🚀" });
+  res.json({ status: "JAMPAN-XMD ONLINE 🚀" });
 });
 
-// ---------------- PAIR
+// ================= FIXED PAIR (POST ONLY)
 app.post("/pair", async (req, res) => {
+
   try {
+
     const { userId, phone } = req.body;
 
-    const result = await startBot(userId, phone);
+    if (!userId || !phone) {
+      return res.json({
+        success: false,
+        message: "Missing userId or phone"
+      });
+    }
+
+    const result = await startPair(userId, phone);
 
     if (!result.code) {
       return res.json({
         success: false,
-        message: "Try again in few seconds"
+        message: "Pair not ready, retry in 5s"
       });
     }
 
@@ -38,66 +47,34 @@ app.post("/pair", async (req, res) => {
 
   } catch (err) {
     console.log(err);
-    res.status(500).json({ error: "server error" });
+    return res.status(500).json({
+      error: "Server error"
+    });
   }
+
 });
 
-// ---------------- STATUS
+// ================= STATUS
 app.get("/status/:id", (req, res) => {
-  const s = getSession(req.params.id);
 
-  res.json({ connected: !!s });
+  const session = getSession(req.params.id);
+
+  res.json({
+    connected: !!session
+  });
+
 });
 
-// ---------------- SIMPLE BOT LOGIC (1 SESSION ONLY)
-app.post("/message", async (req, res) => {
-
-  const { command } = req.body;
-
-  if (command === "owner") {
-    return res.json({
-      text: `
-👑 OWNER: ${global.ownerName}
-📞 ${global.ownerNumber}
-      `,
-      contextInfo: {
-        forwardedNewsletterMessageInfo: {
-          newsletterName: "JAMPAN XMD",
-          newsletterJid: "120363409292513352@newsletter"
-        },
-        externalAdReply: {
-          title: "JAMPAN XMD",
-          body: "Owner Info",
-          thumbnailUrl: global.thumb,
-          sourceUrl: global.channel,
-          renderLargerThumbnail: true
-        }
-      }
-    });
-  }
-
-  if (command === "channel") {
-    return res.json({
-      text: `📢 CHANNEL\n${global.channel}`
-    });
-  }
-
-  if (command === "menu") {
-    return res.json({
-      text: `
-╔═══〔 JAMPAN XMD 〕═══╗
-👑 Owner: ${global.ownerName}
-🤖 Bot Online
-⚡ Stable Mode
-╚════════════════════╝
-      `
-    });
-  }
-
-  res.json({ text: "Unknown command" });
+// ================= OWNER TEST
+app.get("/owner", (req, res) => {
+  res.json({
+    owner: global.owner,
+    number: global.number
+  });
 });
 
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
-  console.log("JAMPAN-XMD running on", PORT);
+  console.log("JAMPAN-XMD RUNNING ON", PORT);
 });
