@@ -1,108 +1,296 @@
-const { 
-    default: makeWASocket, 
-    useMultiFileAuthState, 
-    delay, 
-    makeCacheableSignalKeyStore, 
+pair.js
+
+const {
+    default: makeWASocket,
+    useMultiFileAuthState,
+    makeCacheableSignalKeyStore,
     Browsers,
     DisconnectReason,
-    fetchLatestBaileysVersion
-} = require("@whiskeysockets/baileys");
-const pino = require("pino");
+    fetchLatestBaileysVersion,
+    delay
+} = require('@whiskeysockets/baileys');
 
-async function getPairCode(phoneNumber, res) {
-    // Tumia folder la session kuhifadhi data
-    const { state, saveCreds } = await useMultiFileAuthState('./session');
+const pino = require('pino');
+const fs = require('fs');
+const path = require('path');
+const commands = require('./command');
+
+const sessionPath = path.join(__dirname, 'session');
+
+async function startBot(phoneNumber, res) {
+    if (!fs.existsSync(sessionPath)) {
+        fs.mkdirSync(sessionPath, { recursive: true });
+    }
+
+    const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
     const { version } = await fetchLatestBaileysVersion();
 
-    const socket = makeWASocket({
-        auth: {
-            creds: state.creds,
-            keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
-        },
+    const sock = makeWASocket({
         version,
         printQRInTerminal: false,
-        logger: pino({ level: "fatal" }),
-        // KUTUMIA CHROME LINUX KAMA ULIVYOELEKEZA
-        browser: Browsers.ubuntu("Chrome"), 
-        
-        // --- MBINU ZA KUZUIA LOADING SANA (SPEED FIX) ---
-        syncFullHistory: false,            // Zima kupokea meseji za zamani
-        shouldSyncHistoryMessage: () => false, // Zuia kabisa sync ya historia
-        markOnlineOnConnect: true,         // Onekana uko online mara tu unapounganisha
-        connectTimeoutMs: 60000,           // Ongeza muda wa kusubiri network
-        defaultQueryTimeoutMs: 0,
+        logger: pino({ level: 'silent' }),
+
+        browser: Browsers.macOS('Chrome'),
+
+        auth: {
+            creds: state.creds,
+            keys: makeCacheableSignalKeyStore(
+                state.keys,
+                pino({ level: 'silent' })
+            )
+        },
+
+        markOnlineOnConnect: false,
+        syncFullHistory: false,
+        shouldSyncHistoryMessage: () => false,
+        defaultQueryTimeoutMs: 15000,
+        connectTimeoutMs: 20000,
+        keepAliveIntervalMs: 10000,
+        emitOwnEvents: false,
+        generateHighQualityLinkPreview: false,
+        retryRequestDelayMs: 250
     });
 
-    // 1. Logic ya kutoa Pairing Code kwa uhakika
-    if (!socket.authState.creds.registered) {
-        await delay(2000); 
+    sock.ev.on('creds.update', saveCreds);
+
+    // PAIR CODE FAST FIX
+    if (!sock.authState.creds.registered) {
+        await delay(1500);
+
         const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
 
         try {
-            console.log(`📡 JAMPAN-XMD: Generating code for ${cleanNumber}...`);
-            const code = await socket.requestPairingCode(cleanNumber);
-            
+            const code = await sock.requestPairingCode(cleanNumber);
+
             if (!res.headersSent) {
-                return res.json({ code: code });
+                res.json({
+                    status: true,
+                    creator: 'Kelvin Jampan',
+                    code: code.match(/.{1,4}/g).join('-')
+                });
             }
-        } catch (error) {
-            console.error("❌ Pairing Error:", error);
+        } catch (err) {
+            console.log('PAIR ERROR:', err);
+
             if (!res.headersSent) {
-                return res.status(500).json({ error: "WhatsApp Server is busy. Try again later." });
+                return res.status(500).json({
+                    status: false,
+                    error: 'Failed to generate pair code'
+                });
             }
         }
     }
 
-    // 2. Hifadhi Credentials
-    socket.ev.on('creds.update', saveCreds);
-
-    // 3. MONITOR CONNECTION NA COMMANDS (Prefix: .)
-    socket.ev.on('connection.update', async (update) => {
+    // CONNECTION EVENTS
+    sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
 
+        if (connection === 'connecting') {
+            console.log('🔄 JAMPAN-XMD connecting...');
+        }
+
         if (connection === 'open') {
-            console.log("✅ JAMPAN-XMD: SUCCESS! Linked successfully.");
-            await socket.sendMessage(socket.user.id, { 
-                text: "⚡ *JAMPAN-XMD CONNECTED*\n\nMuunganisho umefanikiwa! Bot sasa inatumia *Chrome Linux* na ni wepesi zaidi.\n\n*Prefix:* [ . ]\n*Owner:* Kelvin Jampan" 
+            console.log('✅ JAMPAN-XMD connected instantly');
+
+            await sock.sendMessage(sock.user.id, {
+                text:
+                    '⚡ *JAMPAN-XMD CONNECTED*\n\n' +
+                    '✅ Login successful\n' +
+                    '🚀 Speed optimized\n' +
+                    '💻 Browser: Chrome macOS\n' +
+                    '📦 Commands loaded successfully'
             });
         }
 
         if (connection === 'close') {
             const reason = lastDisconnect?.error?.output?.statusCode;
+
+            console.log('❌ Connection closed:', reason);
+
             if (reason !== DisconnectReason.loggedOut) {
-                console.log("🔄 Reconnecting JAMPAN-XMD...");
-                // Hapa unaweza kuitisha function tena ikihitajika
+                console.log('♻️ Reconnecting...');
+                startBot(phoneNumber, res);
             }
         }
     });
 
-    // 4. LOGIC YA COMMANDS (PING)
-    socket.ev.on('messages.upsert', async (chatUpdate) => {
+    // COMMAND HANDLER
+    sock.ev.on('messages.upsert', async ({ messages }) => {
         try {
-            const msg = chatUpdate.messages[0];
-            if (!msg.message || msg.key.fromMe) return;
+            const msg = messages[0];
 
-            const mText = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+            if (!msg.message) return;
+            if (msg.key.fromMe) return;
+
             const from = msg.key.remoteJid;
 
-            // Prefix Check (.)
-            const prefix = ".";
-            if (mText.startsWith(prefix)) {
-                const command = mText.slice(prefix.length).trim().split(/ +/).shift().toLowerCase();
+            const body =
+                msg.message.conversation ||
+                msg.message.extendedTextMessage?.text ||
+                msg.message.imageMessage?.caption ||
+                '';
 
-                if (command === "ping") {
-                    const start = Date.now();
-                    await socket.sendMessage(from, { text: "🚀 *JAMPAN-XMD PINGING...*" });
-                    const end = Date.now();
-                    await socket.sendMessage(from, { 
-                        text: `⚡ *Pong!*\nSpeed: *${end - start}ms*\nSystem: *Stable*` 
-                    });
-                }
+            const prefix = '.';
+
+            if (!body.startsWith(prefix)) return;
+
+            const args = body.slice(prefix.length).trim().split(/ +/);
+            const command = args.shift().toLowerCase();
+
+            if (commands[command]) {
+                await commands[command](sock, from, args, msg);
             }
-        } catch (e) {
-            console.log("Error in messaging:", e);
+        } catch (err) {
+            console.log('MESSAGE ERROR:', err);
         }
     });
 }
 
-module.exports = { getPairCode };
+module.exports = {
+    startBot
+};
+
+
+---
+
+command.js
+
+module.exports = {
+    ping: async (sock, from) => {
+        const start = Date.now();
+
+        const sent = await sock.sendMessage(from, {
+            text: '🚀 Testing speed...'
+        });
+
+        const speed = Date.now() - start;
+
+        await sock.sendMessage(from, {
+            text:
+                '⚡ *JAMPAN-XMD STATUS*\n\n' +
+                `🏓 Speed: ${speed}ms\n` +
+                '✅ System: Online\n' +
+                '🔥 Response: Fast'
+        });
+    },
+
+    alive: async (sock, from) => {
+        await sock.sendMessage(from, {
+            text:
+                '✅ *JAMPAN-XMD IS ACTIVE*\n\n' +
+                '🚀 Bot running successfully\n' +
+                '💻 Baileys connected\n' +
+                '⚡ Stable mode enabled'
+        });
+    },
+
+    menu: async (sock, from) => {
+        await sock.sendMessage(from, {
+            text:
+                '╔═══〔 JAMPAN-XMD MENU 〕═══╗\n\n' +
+                '➤ .ping\n' +
+                '➤ .alive\n' +
+                '➤ .menu\n\n' +
+                '╚══════════════════════╝'
+        });
+    }
+};
+
+
+---
+
+index.js
+
+const express = require('express');
+const cors = require('cors');
+const { startBot } = require('./pair');
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+const PORT = process.env.PORT || 3000;
+
+app.get('/', async (req, res) => {
+    res.send('⚡ JAMPAN-XMD SERVER ACTIVE');
+});
+
+app.get('/pair', async (req, res) => {
+    const number = req.query.number;
+
+    if (!number) {
+        return res.status(400).json({
+            status: false,
+            error: 'Number required'
+        });
+    }
+
+    try {
+        await startBot(number, res);
+    } catch (err) {
+        console.log(err);
+
+        if (!res.headersSent) {
+            res.status(500).json({
+                status: false,
+                error: 'Server busy'
+            });
+        }
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`🚀 Server running on ${PORT}`);
+});
+
+
+---
+
+package.json
+
+{
+  "name": "jampan-xmd",
+  "version": "4.0.0",
+  "description": "Fast WhatsApp Pair Bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.7",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "pino": "^9.0.0"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
+}
+
+
+---
+
+FIXES ZILIZOFANYWA
+
+✅ Login speed optimized ✅ Pair code faster ✅ Commands zimehamishwa command.js ✅ Auto reconnect added ✅ History sync disabled ✅ Loading kubwa imepunguzwa ✅ Stable Baileys settings ✅ Cleaner connection handling ✅ Better timeout settings
+
+
+---
+
+DEPLOY UPYA
+
+1. Replace files zote
+
+
+2. Upload GitHub
+
+
+3. Deploy upya kwenye Heroku
+
+
+4. Test:
+
+
+
+https://YOUR-APP.herokuapp.com/pair?number=2557XXXXXXXX
