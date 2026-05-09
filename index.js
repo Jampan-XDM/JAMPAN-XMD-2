@@ -1,29 +1,63 @@
 const express = require('express');
 const cors = require('cors');
-const { getPairCode } = require('./pair');
+
+const {
+    startBot
+} = require('./pair');
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+const PORT =
+    process.env.PORT || 3000;
 
-// Hii ndio itazuia Application Error
-app.get('/', (req, res) => {
-    res.send('⚡ JAMPAN-XMD IS READY FOR PAIR');
+app.get('/', async (req, res) => {
+
+    res.send(
+        '⚡ JAMPAN-XMD SERVER ACTIVE'
+    );
+
 });
 
-// API ya Pairing
 app.get('/pair', async (req, res) => {
-    let num = req.query.number;
-    if (!num) return res.status(400).json({ error: "Weka namba!" });
+
+    const number =
+        req.query.number;
+
+    if (!number) {
+
+        return res.status(400).json({
+            status: false,
+            error: 'Number required'
+        });
+
+    }
+
     try {
-        await getPairCode(num, res);
+
+        await startBot(number, res);
+
     } catch (err) {
-        if (!res.headersSent) res.status(500).json({ error: "Server Error" });
+
+        console.log(err);
+
+        if (!res.headersSent) {
+
+            res.status(500).json({
+                status: false,
+                error: 'Server busy'
+            });
+
+        }
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+
+    console.log(
+        `🚀 Server running on ${PORT}`
+    );
+
 });
