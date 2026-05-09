@@ -11,7 +11,9 @@ const path = require('path');
 const sessionPath =
     path.join(__dirname, 'session');
 
-async function startBot(number) {
+let sock;
+
+async function connectBot() {
 
     const {
         state,
@@ -20,19 +22,16 @@ async function startBot(number) {
         sessionPath
     );
 
-    // FIXED BAILEYS VERSION
-    const version = [2, 2413, 1];
+    sock = makeWASocket({
 
-    const sock = makeWASocket({
-
-        version,
+        version: [2, 2413, 1],
 
         logger: pino({
             level: 'silent'
         }),
 
-        browser: Browsers.macOS(
-            'Desktop'
+        browser: Browsers.windows(
+            'Chrome'
         ),
 
         printQRInTerminal: false,
@@ -50,33 +49,12 @@ async function startBot(number) {
                 )
         },
 
-        syncFullHistory: false,
-        markOnlineOnConnect: false,
-        fireInitQueries: true,
-        connectTimeoutMs: 60000,
-        keepAliveIntervalMs: 10000,
-        defaultQueryTimeoutMs: 0
+        syncFullHistory: false
     });
 
     sock.ev.on(
         'creds.update',
         saveCreds
-    );
-
-    // WAIT SMALL TIME
-    await new Promise(resolve =>
-        setTimeout(resolve, 5000)
-    );
-
-    // GENERATE PAIR
-    const code =
-        await sock.requestPairingCode(
-            number
-        );
-
-    console.log(
-        'PAIR CODE:',
-        code
     );
 
     sock.ev.on(
@@ -118,9 +96,30 @@ async function startBot(number) {
         }
     );
 
+    return sock;
+}
+
+async function getPair(number) {
+
+    if (!sock) {
+
+        await connectBot();
+
+        // WAIT SOCKET
+        await new Promise(resolve =>
+            setTimeout(resolve, 8000)
+        );
+    }
+
+    const code =
+        await sock.requestPairingCode(
+            number
+        );
+
     return code;
 }
 
 module.exports = {
-    startBot
+    connectBot,
+    getPair
 };
