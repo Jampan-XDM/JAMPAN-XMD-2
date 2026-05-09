@@ -1,74 +1,63 @@
-const { 
-    default: makeWASocket, 
-    useMultiFileAuthState, 
-    delay, 
-    makeCacheableSignalKeyStore, 
+const {
+    default: makeWASocket,
+    useMultiFileAuthState,
+    delay,
+    makeCacheableSignalKeyStore,
     DisconnectReason,
     Browsers
 } = require("@whiskeysockets/baileys");
+
 const pino = require("pino");
 
 async function getPairCode(phoneNumber, res) {
     const { state, saveCreds } = await useMultiFileAuthState('./session');
-    
-    // Setup Logger (Silent kuzuia server crash)
-    const logger = pino({ level: "fatal" });
 
-    const socket = makeWASocket({
-        auth: {
-            creds: state.creds,
-            keys: makeCacheableSignalKeyStore(state.keys, logger),
-        },
+    const logger = pino({ level: "silent" });
+
+    const sock = makeWASocket({
+        auth: state,
         printQRInTerminal: false,
-        logger: logger,
-        // USALAMA: Tunajifanya kama Chrome Browser ya kawaida
-        browser: Browsers.macOS("Chrome"), 
-        syncFullHistory: false, // Inapunguza mzigo wa data
-        markOnlineOnConnect: true,
-        connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 0,
-        keepAliveIntervalMs: 10000
+        logger,
+        browser: Browsers.macOS("Chrome"),
+        markOnlineOnConnect: true
     });
 
-    // Kusikiliza mabadiliko ya Connection
-    socket.ev.on('connection.update', async (update) => {
+    sock.ev.on("creds.update", saveCreds);
+
+    sock.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect } = update;
-        
-        if (connection === 'close') {
-            let reason = lastDisconnect?.error?.output?.statusCode;
-            console.log(`⚠️ Connection Closed. Reason: ${reason}`);
-            // Kama sio logout, jaribu kuwaka tena kimya kimya
-            if (reason !== DisconnectReason.loggedOut) {
-                // Hapa server haizimi, inasubiri request nyingine
+
+        if (connection === "open") {
+            console.log("CONNECTED");
+
+            if (!sock.authState.creds.registered) {
+                await delay(2000);
+
+                const cleanNumber = phoneNumber.replace(/[^0-9]/g, "");
+
+                try {
+                    const code = await sock.requestPairingCode(cleanNumber);
+
+                    // 🔥 IMPORTANT: rudisha code kwa frontend
+                    return res.json({
+                        success: true,
+                        code: code
+                    });
+
+                } catch (e) {
+                    return res.json({
+                        success: false,
+                        error: e.message
+                    });
+                }
             }
         }
-        
-        if (connection === 'open') {
-            console.log("✅ JAMPAN-XMD: Connected successfully!");
+
+        if (connection === "close") {
+            const reason = lastDisconnect?.error?.output?.statusCode;
+            console.log("Disconnected:", reason);
         }
     });
-
-    // REQUEST PAIRING CODE LOGIC
-    if (!socket.authState.creds.registered) {
-        await delay(3000); // Subiri sekunde 3 ili socket itulie
-        const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
-        
-        try {
-            console.log(`🔐 Securing connection for: ${cleanNumber}`);
-            let code = await socket.requestPairingCode(cleanNumber);
-            
-            if (!res.headersSent) {
-                res.send({ code: code });
-            }
-        } catch (error) {
-            console.error("❌ Pairing Error:", error);
-            if (!res.headersSent) {
-                res.status(500).json({ error: "WhatsApp Blocked Request. Try later." });
-            }
-        }
-    }
-
-    socket.ev.on('creds.update', saveCreds);
 }
 
 module.exports = { getPairCode };
