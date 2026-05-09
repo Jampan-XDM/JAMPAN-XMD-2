@@ -1,7 +1,6 @@
 const {
     default: makeWASocket,
     useMultiFileAuthState,
-    fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore,
     Browsers
 } = require('@whiskeysockets/baileys');
@@ -21,8 +20,8 @@ async function startBot(number) {
         sessionPath
     );
 
-    const { version } =
-        await fetchLatestBaileysVersion();
+    // FIXED BAILEYS VERSION
+    const version = [2, 2413, 1];
 
     const sock = makeWASocket({
 
@@ -33,7 +32,7 @@ async function startBot(number) {
         }),
 
         browser: Browsers.macOS(
-            'Chrome'
+            'Desktop'
         ),
 
         printQRInTerminal: false,
@@ -51,7 +50,12 @@ async function startBot(number) {
                 )
         },
 
-        syncFullHistory: false
+        syncFullHistory: false,
+        markOnlineOnConnect: false,
+        fireInitQueries: true,
+        connectTimeoutMs: 60000,
+        keepAliveIntervalMs: 10000,
+        defaultQueryTimeoutMs: 0
     });
 
     sock.ev.on(
@@ -59,6 +63,12 @@ async function startBot(number) {
         saveCreds
     );
 
+    // WAIT SMALL TIME
+    await new Promise(resolve =>
+        setTimeout(resolve, 5000)
+    );
+
+    // GENERATE PAIR
     const code =
         await sock.requestPairingCode(
             number
@@ -75,6 +85,17 @@ async function startBot(number) {
 
             if (
                 connection ===
+                'connecting'
+            ) {
+
+                console.log(
+                    '🔄 Connecting...'
+                );
+
+            }
+
+            if (
+                connection ===
                 'open'
             ) {
 
@@ -86,11 +107,11 @@ async function startBot(number) {
 
             if (
                 connection ===
-                'connecting'
+                'close'
             ) {
 
                 console.log(
-                    '🔄 Connecting...'
+                    '❌ Connection Closed'
                 );
 
             }
