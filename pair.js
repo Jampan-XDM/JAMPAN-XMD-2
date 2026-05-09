@@ -59,3 +59,16 @@ async function getPairCode(phoneNumber, res) {
 }
 
 module.exports = { getPairCode };
+
+// Ndani ya pair.js
+try {
+    let code = await socket.requestPairingCode(cleanNumber);
+    if (!res.headersSent) {
+        res.send({ code: code });
+    }
+} catch (error) {
+    console.error("PAIRS REQUEST ERROR:", error);
+    if (!res.headersSent) {
+        res.status(500).json({ error: "WhatsApp Server is busy, try again." });
+    }
+}
