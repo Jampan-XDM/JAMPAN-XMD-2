@@ -8,37 +8,26 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-// DASHBOARD ROUTE (Ili link ionekane Online)
 app.get('/', (req, res) => {
     res.send(`
-        <body style="background:#0f172a; color:#38bdf8; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh;">
-            <div style="text-align:center; border:2px solid #38bdf8; padding:30px; border-radius:20px; box-shadow: 0 0 20px #38bdf866;">
-                <h1 style="margin:0;">⚡ JAMPAN-XMD IS ONLINE</h1>
-                <p style="color:white; opacity:0.8;">Backend System is Active & Ready for Pairing</p>
-                <p style="font-size:12px;">Powered by Kelvin Jampan</p>
+        <body style="background:#0f172a; color:white; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;">
+            <div style="text-align:center; border:2px solid #22c55e; padding:40px; border-radius:30px; box-shadow: 0 0 20px #22c55e44;">
+                <h1 style="color:#22c55e; margin:0;">⚡ JAMPAN-XMD ONLINE</h1>
+                <p>System is Active | Ping Command Enabled</p>
+                <p style="font-size:12px; opacity:0.6;">👑 Kelvin Jampan | v3.0.0</p>
             </div>
         </body>
     `);
 });
 
-// API ROUTE YA /PAIR (Inaitwa na Frontend yako)
 app.get('/pair', async (req, res) => {
     const num = req.query.number;
-    if (!num) return res.status(400).json({ error: "Weka namba ya simu!" });
-
-    console.log(`📡 Request received for: ${num}`);
-    
-    // Tunaita engine yetu ya pairing hapa
+    if (!num) return res.status(400).json({ error: "No number" });
     try {
         await getPairCode(num, res);
     } catch (err) {
-        console.error("Critical Backend Error:", err);
-        if (!res.headersSent) {
-            res.status(500).json({ error: "Internal Server Error" });
-        }
+        if (!res.headersSent) res.status(500).json({ error: "Server Error" });
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 JAMPAN-XMD Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
