@@ -1,10 +1,10 @@
 const {
     default: makeWASocket,
     useMultiFileAuthState,
-    DisconnectReason,
     fetchLatestBaileysVersion,
     Browsers,
-    makeCacheableSignalKeyStore
+    makeCacheableSignalKeyStore,
+    DisconnectReason
 } = require('@whiskeysockets/baileys');
 
 const pino = require('pino');
@@ -46,8 +46,8 @@ async function startBot(number) {
 
         printQRInTerminal: false,
 
-        browser: Browsers.windows(
-            'Chrome'
+        browser: Browsers.macOS(
+            'Desktop'
         ),
 
         auth: {
@@ -63,12 +63,13 @@ async function startBot(number) {
         },
 
         syncFullHistory: false,
-        markOnlineOnConnect: true,
+        markOnlineOnConnect: false,
         defaultQueryTimeoutMs: undefined,
-        connectTimeoutMs: 60000,
+        connectTimeoutMs: 30000,
         keepAliveIntervalMs: 10000,
+        retryRequestDelayMs: 500,
+        fireInitQueries: false,
         emitOwnEvents: false,
-        fireInitQueries: true,
         generateHighQualityLinkPreview: false
     });
 
@@ -77,61 +78,36 @@ async function startBot(number) {
         saveCreds
     );
 
-    // WAIT SOCKET READY
-    await new Promise((resolve) => {
-
-        sock.ev.on(
-            'connection.update',
-            (update) => {
-
-                const {
-                    connection
-                } = update;
-
-                if (
-                    connection ===
-                    'connecting'
-                ) {
-
-                    console.log(
-                        '🔄 Connecting...'
-                    );
-
-                }
-
-                if (
-                    connection ===
-                    'open'
-                ) {
-
-                    console.log(
-                        '✅ Socket Ready'
-                    );
-
-                    resolve();
-
-                }
-            }
-        );
-    });
-
-    // REQUEST PAIR
+    // GENERATE PAIR FAST
     let code;
 
-    if (
-        !sock.authState.creds
-        .registered
-    ) {
+    try {
 
-        code =
-            await sock.requestPairingCode(
-                number
+        if (
+            !sock.authState.creds
+            .registered
+        ) {
+
+            code =
+                await sock.requestPairingCode(
+                    number
+                );
+
+            console.log(
+                'PAIR CODE:',
+                code
             );
 
+        }
+
+    } catch (err) {
+
         console.log(
-            'PAIR:',
-            code
+            'PAIR ERROR:',
+            err
         );
+
+        throw err;
 
     }
 
@@ -147,11 +123,32 @@ async function startBot(number) {
 
             if (
                 connection ===
+                'connecting'
+            ) {
+
+                console.log(
+                    '🔄 Connecting...'
+                );
+
+            }
+
+            if (
+                connection ===
                 'open'
             ) {
 
                 console.log(
                     '✅ Connected'
+                );
+
+                await sock.sendMessage(
+                    sock.user.id,
+                    {
+                        text:
+                            '⚡ JAMPAN-XMD CONNECTED\n\n' +
+                            '✅ Login successful\n' +
+                            '🚀 Stable System'
+                    }
                 );
 
             }
@@ -171,7 +168,6 @@ async function startBot(number) {
                     reason
                 );
 
-                // LOGOUT
                 if (
                     reason ===
                     DisconnectReason
@@ -203,7 +199,7 @@ async function startBot(number) {
         }
     );
 
-    // COMMANDS
+    // COMMAND HANDLER
     sock.ev.on(
         'messages.upsert',
         async ({ messages }) => {
