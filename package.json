@@ -1,6 +1,10 @@
 {
   "name": "jampan-xmd",
   "version": "5.0.0",
+
+"cacheDirectories": [
+  "node_modules"
+]
   "description": "Stable WhatsApp Pair Bot",
   "main": "index.js",
   "scripts": {
@@ -15,7 +19,3 @@
   "engines": {
     "node": "20.x"
   }
-}
-"cacheDirectories": [
-  "node_modules"
-]
