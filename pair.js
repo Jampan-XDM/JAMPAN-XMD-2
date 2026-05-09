@@ -11,7 +11,7 @@ const pino = require("pino");
 
 async function getPairCode(phoneNumber, res) {
     const { state, saveCreds } = await useMultiFileAuthState('./session');
-    const { version } = await fetchLatestBaileysVersion(); // Inapata version mpya ya WA
+    const { version } = await fetchLatestBaileysVersion();
 
     const socket = makeWASocket({
         auth: {
@@ -19,71 +19,60 @@ async function getPairCode(phoneNumber, res) {
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
         },
         version,
+        browser: Browsers.ubuntu("Chrome"),
         printQRInTerminal: false,
         logger: pino({ level: "fatal" }),
-        // Hapa tunatumia Chrome Linux (Ubuntu) kama ulivyoelekeza
-        browser: Browsers.ubuntu("Chrome"), 
-        markOnlineOnConnect: false,
+        // Hizi line zinazuia "Server Down" na kuifanya bot iwe fasta
+        syncFullHistory: false,
+        shouldSyncHistoryMessage: () => false,
     });
 
-    // 1. Logic ya kuomba Pairing Code
     if (!socket.authState.creds.registered) {
-        await delay(3000); 
+        await delay(3000);
         const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
-
         try {
-            console.log(`📡 JAMPAN-XMD: Requesting code for ${cleanNumber} using Chrome Linux...`);
             const code = await socket.requestPairingCode(cleanNumber);
-            
-            if (!res.headersSent) {
-                return res.json({ code: code });
-            }
+            if (!res.headersSent) res.json({ code: code });
         } catch (error) {
-            console.error("❌ Pairing Failed:", error);
-            if (!res.headersSent) {
-                return res.status(500).json({ error: "WhatsApp Blocked Request. Try after 5 mins." });
-            }
+            if (!res.headersSent) res.status(500).json({ error: "WhatsApp Busy" });
         }
     }
 
-    // 2. Hakikisha Creds zinasave-wa kila sekunde
     socket.ev.on('creds.update', saveCreds);
 
-    // 3. Monitor muunganisho
-    socket.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect } = update;
+    // --- COMMAND YA PING NA CONNECTION LOGIC ---
+    socket.ev.on('messages.upsert', async (chatUpdate) => {
+        try {
+            const msg = chatUpdate.messages[0];
+            if (!msg.message || msg.key.fromMe) return;
 
-        if (connection === 'open') {
-            console.log("✅ JAMPAN-XMD: SUCCESS! Linked on Chrome Linux.");
-            
-            // Tuma ujumbe wa uthibitisho kwenye namba yako
-            await socket.sendMessage(socket.user.id, { 
-                text: "⚡ *JAMPAN-XMD CONNECTED*\n\nMuunganisho umefanikiwa kupitia *Chrome Linux*. Bot sasa iko tayari kazi!\n\n👑 *Owner:* Kelvin Jampan\n📢 *Channel:* https://whatsapp.com/channel/0029Vb7fTNf3QxS8A6rbBB3S" 
-            });
-        }
+            const mText = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+            const from = msg.key.remoteJid;
 
-        if (connection === 'close') {
-            const reason = lastDisconnect?.error?.output?.statusCode;
-            if (reason !== DisconnectReason.loggedOut) {
-                // Inajaribu kurudi hewani kama sio logout ya makusudi
+            // Command: .ping au !ping
+            if (mText.toLowerCase() === '.ping' || mText.toLowerCase() === '!ping') {
+                const start = Date.now();
+                await socket.sendMessage(from, { text: '⚡ *JAMPAN-XMD:* Pinging...' });
+                const end = Date.now();
+                await socket.sendMessage(from, { 
+                    text: `🚀 *Pong!* \nSpeed: *${end - start}ms*` 
+                });
             }
+        } catch (err) {
+            console.log(err);
+        }
+    });
+
+    socket.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update;
+        if (connection === 'open') {
+            console.log("✅ JAMPAN-XMD ACTIVE");
+        }
+        if (connection === 'close') {
+            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (shouldReconnect) getPairCode(phoneNumber, res);
         }
     });
 }
 
 module.exports = { getPairCode };
-
-const socket = makeWASocket({
-    auth: {
-        creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
-    },
-    browser: Browsers.ubuntu("Chrome"),
-    // --- ONGEZA HIZI LINE CHINI KUPUNGUZA MZIGO ---
-    syncFullHistory: false,           // Usidownload chats za zamani
-    shouldSyncHistoryMessage: () => false, // Zuia kabisa kuanza kusync history
-    linkPreviewImageThumbnailWidth: 192, // Punguza ukubwa wa preview images
-    // ----------------------------------------------
-    logger: pino({ level: "fatal" }),
-});
-
