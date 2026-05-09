@@ -1,23 +1,46 @@
+const express = require('express');
+const cors = require('cors');
+
+const {
+    startBot
+} = require('./pair');
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+const PORT =
+    process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+
+    res.send(
+        '⚡ JAMPAN-XMD ACTIVE'
+    );
+
+});
+
 app.get('/pair', async (req, res) => {
 
-    const number =
-        req.query.number;
-
-    if (!number) {
-
-        return res.json({
-            status: false,
-            error: 'Number missing'
-        });
-
-    }
-
     try {
+
+        const number =
+            req.query.number;
+
+        if (!number) {
+
+            return res.json({
+                status: false,
+                error: 'Number required'
+            });
+
+        }
 
         const code =
             await startBot(number);
 
-        return res.status(200).json({
+        return res.json({
 
             status: true,
 
@@ -31,12 +54,20 @@ app.get('/pair', async (req, res) => {
 
         console.log(err);
 
-        return res.status(500).json({
+        return res.json({
 
             status: false,
-            error: 'Pair failed'
+            error: String(err)
 
         });
 
     }
+});
+
+app.listen(PORT, () => {
+
+    console.log(
+        `🚀 Server running on ${PORT}`
+    );
+
 });
