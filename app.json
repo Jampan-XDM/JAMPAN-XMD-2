@@ -1,18 +1,6 @@
 {
-  "name": "JAMPAN-XMD",
-  "description": "Stable WhatsApp Pairing Bot by Kelvin Jampan",
-  "logo": "https://files.catbox.moe/fzjhed.png",
-  "repository": "https://github.com/Jampan-XDM/JAMPAN-XMD-2",
-  "keywords": ["whatsapp", "bot", "baileys", "jampan", "xmd"],
-  "buildpacks": [
-    {
-      "url": "heroku/nodejs"
-    }
-  ],
-  "env": {
-    "NODE_ENV": {
-      "description": "Production environment",
-      "value": "production"
-    }
-  }
+  "name": "JAMPAN-XMD Pairing",
+  "description": "WhatsApp Pairing Code Generator",
+  "repository": "https://github.com/your-username/jampan-xmd",
+  "keywords": ["whatsapp", "bot", "baileys", "jampan"]
 }
