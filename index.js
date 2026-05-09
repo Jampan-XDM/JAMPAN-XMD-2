@@ -73,3 +73,12 @@ app.get('/pair', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`⚡ JAMPAN-XMD imewaka kwenye Port ${PORT}`);
 });
+app.get('/pair', async (req, res) => {
+    const number = req.query.number;
+
+    if (!number) {
+        return res.json({ success: false, message: "Number required" });
+    }
+
+    await getPairCode(number, res);
+});
