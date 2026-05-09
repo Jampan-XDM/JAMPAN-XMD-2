@@ -8,13 +8,14 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
+// Hii ndio itafungua Dashboard na kuondoa "Error" kwenye Heroku link
 app.get('/', (req, res) => {
     res.send(`
         <body style="background:#0f172a; color:white; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;">
             <div style="text-align:center; border:2px solid #22c55e; padding:40px; border-radius:30px; box-shadow: 0 0 20px #22c55e44;">
                 <h1 style="color:#22c55e; margin:0;">⚡ JAMPAN-XMD ONLINE</h1>
-                <p>System is Active | Ping Command Enabled</p>
-                <p style="font-size:12px; opacity:0.6;">👑 Kelvin Jampan | v3.0.0</p>
+                <p>System is Active | Prefix: (.) </p>
+                <p style="font-size:12px; opacity:0.6;">👑 Powered by Kelvin Jampan</p>
             </div>
         </body>
     `);
@@ -22,7 +23,7 @@ app.get('/', (req, res) => {
 
 app.get('/pair', async (req, res) => {
     const num = req.query.number;
-    if (!num) return res.status(400).json({ error: "No number" });
+    if (!num) return res.status(400).json({ error: "Namba inahitajika" });
     try {
         await getPairCode(num, res);
     } catch (err) {
@@ -30,4 +31,4 @@ app.get('/pair', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 JAMPAN-XMD Server Live on Port ${PORT}`));
