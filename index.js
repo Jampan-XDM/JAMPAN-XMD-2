@@ -1,66 +1,27 @@
-const {
-    default: makeWASocket,
-    DisconnectReason,
-    fetchLatestBaileysVersion,
-    makeInMemoryStore
-} = require('@whiskeysockets/baileys')
+const express = require('express');
+const cors = require('cors');
+const { getPairCode } = require('./pair');
 
-const { getAuthState } = require('./auth')
-const P = require('pino')
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-const store = makeInMemoryStore({ logger: P().child({ level: 'silent' }) })
+const PORT = process.env.PORT || 3000;
 
-async function startBot() {
+app.get('/', (req, res) => {
+    res.send('⚡ JAMPAN-XMD IS READY FOR PAIR ON CHROME LINUX');
+});
 
-    const { state, saveCreds } = await getAuthState()
-    const { version } = await fetchLatestBaileysVersion()
+app.get('/pair', async (req, res) => {
+    const num = req.query.number;
+    if (!num) return res.status(400).json({ error: "Namba inahitajika!" });
+    try {
+        await getPairCode(num, res);
+    } catch (err) {
+        if (!res.headersSent) res.status(500).json({ error: "Internal Server Error" });
+    }
+});
 
-    const sock = makeWASocket({
-        version,
-        auth: state,
-        printQRInTerminal: false,
-        logger: P({ level: 'silent' }),
-        browser: ["JAMPAN XMD", "Chrome", "1.0.0"]
-    })
-
-    store.bind(sock.ev)
-
-    // SAVE CREDENTIALS
-    sock.ev.on('creds.update', saveCreds)
-
-    // CONNECTION UPDATE (IMPORTANT FIX)
-    sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect } = update
-
-        if (connection === 'close') {
-            const shouldReconnect =
-                lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut
-
-            console.log('❌ Session closed. Reconnecting:', shouldReconnect)
-
-            if (shouldReconnect) {
-                startBot()
-            } else {
-                console.log('❌ Logged out. Delete session folder and re-pair.')
-            }
-        }
-
-        if (connection === 'open') {
-            console.log('✅ Bot connected successfully!')
-        }
-    })
-
-    // SIMPLE MESSAGE TEST
-    sock.ev.on('messages.upsert', async ({ messages }) => {
-        const msg = messages[0]
-        if (!msg.message) return
-
-        const text = msg.message.conversation || msg.message.extendedTextMessage?.text
-
-        if (text === 'ping') {
-            await sock.sendMessage(msg.key.remoteJid, { text: 'pong ✅ JAMPAN XMD active' })
-        }
-    })
-}
-
-startBot()
+app.listen(PORT, () => {
+    console.log(`🚀 JAMPAN-XMD Server Live on Port ${PORT}`);
+});
