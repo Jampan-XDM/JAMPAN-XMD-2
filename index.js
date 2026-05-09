@@ -1,76 +1,66 @@
-const express = require('express');
-const cors = require('cors');
-
 const {
-    connectBot,
-    getPair
-} = require('./pair');
+    default: makeWASocket,
+    DisconnectReason,
+    fetchLatestBaileysVersion,
+    makeInMemoryStore
+} = require('@whiskeysockets/baileys')
 
-const app = express();
+const { getAuthState } = require('./auth')
+const P = require('pino')
 
-app.use(cors());
+const store = makeInMemoryStore({ logger: P().child({ level: 'silent' }) })
 
-const PORT =
-    process.env.PORT || 3000;
+async function startBot() {
 
-// START BOT ON SERVER START
-connectBot();
+    const { state, saveCreds } = await getAuthState()
+    const { version } = await fetchLatestBaileysVersion()
 
-app.get('/', (req, res) => {
+    const sock = makeWASocket({
+        version,
+        auth: state,
+        printQRInTerminal: false,
+        logger: P({ level: 'silent' }),
+        browser: ["JAMPAN XMD", "Chrome", "1.0.0"]
+    })
 
-    res.send(
-        '⚡ JAMPAN-XMD ACTIVE'
-    );
+    store.bind(sock.ev)
 
-});
+    // SAVE CREDENTIALS
+    sock.ev.on('creds.update', saveCreds)
 
-app.get('/pair', async (req, res) => {
+    // CONNECTION UPDATE (IMPORTANT FIX)
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update
 
-    try {
+        if (connection === 'close') {
+            const shouldReconnect =
+                lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut
 
-        const number =
-            req.query.number;
+            console.log('❌ Session closed. Reconnecting:', shouldReconnect)
 
-        if (!number) {
-
-            return res.json({
-                status: false,
-                error: 'Number missing'
-            });
-
+            if (shouldReconnect) {
+                startBot()
+            } else {
+                console.log('❌ Logged out. Delete session folder and re-pair.')
+            }
         }
 
-        const code =
-            await getPair(number);
+        if (connection === 'open') {
+            console.log('✅ Bot connected successfully!')
+        }
+    })
 
-        return res.json({
+    // SIMPLE MESSAGE TEST
+    sock.ev.on('messages.upsert', async ({ messages }) => {
+        const msg = messages[0]
+        if (!msg.message) return
 
-            status: true,
+        const text = msg.message.conversation || msg.message.extendedTextMessage?.text
 
-            code: code
-                .match(/.{1,4}/g)
-                .join('-')
+        if (text === 'ping') {
+            await sock.sendMessage(msg.key.remoteJid, { text: 'pong ✅ JAMPAN XMD active' })
+        }
+    })
+}
 
-        });
-
-    } catch (err) {
-
-        console.log(err);
-
-        return res.json({
-
-            status: false,
-            error: String(err)
-
-        });
-
-    }
-});
-
-app.listen(PORT, () => {
-
-    console.log(
-        `🚀 Running ${PORT}`
-    );
-
-});
+startBot()
