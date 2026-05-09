@@ -1,10 +1,10 @@
 const {
     default: makeWASocket,
     useMultiFileAuthState,
-    makeCacheableSignalKeyStore,
-    Browsers,
+    DisconnectReason,
     fetchLatestBaileysVersion,
-    DisconnectReason
+    Browsers,
+    makeCacheableSignalKeyStore
 } = require('@whiskeysockets/baileys');
 
 const pino = require('pino');
@@ -19,9 +19,11 @@ const sessionPath =
 async function startBot(number) {
 
     if (!fs.existsSync(sessionPath)) {
+
         fs.mkdirSync(sessionPath, {
             recursive: true
         });
+
     }
 
     const {
@@ -42,9 +44,11 @@ async function startBot(number) {
             level: 'silent'
         }),
 
-        browser: Browsers.windows('Chrome'),
-
         printQRInTerminal: false,
+
+        browser: Browsers.windows(
+            'Chrome'
+        ),
 
         auth: {
             creds: state.creds,
@@ -52,18 +56,19 @@ async function startBot(number) {
             keys:
                 makeCacheableSignalKeyStore(
                     state.keys,
-                    pino({ level: 'silent' })
+                    pino({
+                        level: 'silent'
+                    })
                 )
         },
 
-        markOnlineOnConnect: true,
         syncFullHistory: false,
-        defaultQueryTimeoutMs: 0,
+        markOnlineOnConnect: true,
+        defaultQueryTimeoutMs: undefined,
         connectTimeoutMs: 60000,
         keepAliveIntervalMs: 10000,
-        retryRequestDelayMs: 2000,
-        fireInitQueries: false,
         emitOwnEvents: false,
+        fireInitQueries: true,
         generateHighQualityLinkPreview: false
     });
 
@@ -72,10 +77,51 @@ async function startBot(number) {
         saveCreds
     );
 
-    // FAST PAIR
+    // WAIT SOCKET READY
+    await new Promise((resolve) => {
+
+        sock.ev.on(
+            'connection.update',
+            (update) => {
+
+                const {
+                    connection
+                } = update;
+
+                if (
+                    connection ===
+                    'connecting'
+                ) {
+
+                    console.log(
+                        '🔄 Connecting...'
+                    );
+
+                }
+
+                if (
+                    connection ===
+                    'open'
+                ) {
+
+                    console.log(
+                        '✅ Socket Ready'
+                    );
+
+                    resolve();
+
+                }
+            }
+        );
+    });
+
+    // REQUEST PAIR
     let code;
 
-    if (!sock.authState.creds.registered) {
+    if (
+        !sock.authState.creds
+        .registered
+    ) {
 
         code =
             await sock.requestPairingCode(
@@ -83,11 +129,13 @@ async function startBot(number) {
             );
 
         console.log(
-            'PAIR CODE:',
+            'PAIR:',
             code
         );
+
     }
 
+    // CONNECTION EVENTS
     sock.ev.on(
         'connection.update',
         async (update) => {
@@ -97,46 +145,37 @@ async function startBot(number) {
                 lastDisconnect
             } = update;
 
-            if (connection === 'connecting') {
-
-                console.log(
-                    '🔄 Connecting...'
-                );
-
-            }
-
-            if (connection === 'open') {
+            if (
+                connection ===
+                'open'
+            ) {
 
                 console.log(
                     '✅ Connected'
                 );
 
-                await sock.sendMessage(
-                    sock.user.id,
-                    {
-                        text:
-                            '⚡ JAMPAN-XMD CONNECTED\n\n' +
-                            '✅ Stable Login Success'
-                    }
-                );
-
             }
 
-            if (connection === 'close') {
+            if (
+                connection ===
+                'close'
+            ) {
 
                 const reason =
-                    lastDisconnect?.error
-                    ?.output?.statusCode;
+                    lastDisconnect
+                    ?.error?.output
+                    ?.statusCode;
 
                 console.log(
                     '❌ Closed:',
                     reason
                 );
 
-                // SESSION EXPIRED
+                // LOGOUT
                 if (
                     reason ===
-                    DisconnectReason.loggedOut
+                    DisconnectReason
+                    .loggedOut
                 ) {
 
                     fs.rmSync(
@@ -169,43 +208,68 @@ async function startBot(number) {
         'messages.upsert',
         async ({ messages }) => {
 
-            const msg = messages[0];
+            try {
 
-            if (!msg.message) return;
-            if (msg.key.fromMe) return;
+                const msg =
+                    messages[0];
 
-            const from =
-                msg.key.remoteJid;
+                if (!msg.message)
+                    return;
 
-            const body =
-                msg.message.conversation ||
-                msg.message
-                .extendedTextMessage?.text ||
-                '';
+                if (
+                    msg.key.fromMe
+                ) return;
 
-            const prefix = '.';
+                const from =
+                    msg.key.remoteJid;
 
-            if (
-                !body.startsWith(prefix)
-            ) return;
+                const body =
+                    msg.message
+                    .conversation ||
 
-            const args =
-                body.slice(1)
-                .trim()
-                .split(/ +/);
+                    msg.message
+                    .extendedTextMessage
+                    ?.text ||
 
-            const command =
-                args.shift()
-                .toLowerCase();
+                    '';
 
-            if (commands[command]) {
+                const prefix = '.';
 
-                commands[command](
-                    sock,
-                    from,
-                    args,
-                    msg
-                );
+                if (
+                    !body.startsWith(
+                        prefix
+                    )
+                ) return;
+
+                const args =
+                    body.slice(1)
+                    .trim()
+                    .split(/ +/);
+
+                const command =
+                    args.shift()
+                    .toLowerCase();
+
+                if (
+                    commands[
+                        command
+                    ]
+                ) {
+
+                    await commands[
+                        command
+                    ](
+                        sock,
+                        from,
+                        args,
+                        msg
+                    );
+
+                }
+
+            } catch (err) {
+
+                console.log(err);
 
             }
         }
