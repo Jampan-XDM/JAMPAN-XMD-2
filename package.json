@@ -1,18 +1,18 @@
 {
   "name": "jampan-xmd",
-  "version": "4.0.0",
-  "description": "Fast WhatsApp Pair Bot",
+  "version": "5.0.0",
+  "description": "Stable WhatsApp Pair Bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.7.7",
-    "cors": "^2.8.5",
+    "@whiskeysockets/baileys": "6.7.7",
     "express": "^4.19.2",
-    "pino": "^9.0.0"
+    "cors": "^2.8.5",
+    "pino": "^8.21.0"
   },
   "engines": {
-    "node": ">=18.x"
+    "node": "20.x"
   }
 }
