@@ -9,72 +9,60 @@ app.use(express.json());
 
 global.owner = "Kelvin Jampan";
 global.number = "255674229015";
-global.channel = "https://whatsapp.com/channel/0029Vb7fTNf3QxS8A6rbBB3S";
-global.thumb = "https://files.catbox.moe/fzjhed.png";
 
 // ================= HOME
 app.get("/", (req, res) => {
-  res.json({ status: "JAMPAN-XMD ONLINE 🚀" });
+  res.json({ status: "JAMPAN-XMD PRO RUNNING 🚀" });
 });
 
-// ================= FIXED PAIR (POST ONLY)
+// ================= PRO PAIR ENDPOINT
 app.post("/pair", async (req, res) => {
 
-  try {
+  const { userId, phone } = req.body;
 
-    const { userId, phone } = req.body;
-
-    if (!userId || !phone) {
-      return res.json({
-        success: false,
-        message: "Missing userId or phone"
-      });
-    }
-
-    const result = await startPair(userId, phone);
-
-    if (!result.code) {
-      return res.json({
-        success: false,
-        message: "Pair not ready, retry in 5s"
-      });
-    }
-
+  if (!userId || !phone) {
     return res.json({
-      success: true,
-      pairingCode: result.code
-    });
-
-  } catch (err) {
-    console.log(err);
-    return res.status(500).json({
-      error: "Server error"
+      success: false,
+      message: "Missing userId or phone"
     });
   }
+
+  const result = await startPair(userId, phone);
+
+  if (!result.success) {
+    return res.json({
+      success: false,
+      message: result.message || result.error
+    });
+  }
+
+  if (!result.code) {
+    return res.json({
+      success: false,
+      message: "Retrying... please wait 5 seconds"
+    });
+  }
+
+  return res.json({
+    success: true,
+    pairingCode: result.code
+  });
 
 });
 
 // ================= STATUS
 app.get("/status/:id", (req, res) => {
 
-  const session = getSession(req.params.id);
+  const s = getSession(req.params.id);
 
   res.json({
-    connected: !!session
+    connected: !!s
   });
 
-});
-
-// ================= OWNER TEST
-app.get("/owner", (req, res) => {
-  res.json({
-    owner: global.owner,
-    number: global.number
-  });
 });
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("JAMPAN-XMD RUNNING ON", PORT);
+  console.log("JAMPAN-XMD PRO RUNNING ON", PORT);
 });
