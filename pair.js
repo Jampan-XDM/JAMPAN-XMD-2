@@ -1,15 +1,11 @@
-const { 
-    default: makeWASocket, 
-    useMultiFileAuthState, 
-    delay, 
-    makeCacheableSignalKeyStore, 
-    Browsers,
-    fetchLatestBaileysVersion,
-    DisconnectReason
-} = require("@whiskeysockets/baileys");
-const pino = require("pino");
+const fs = require('fs'); // Ongeza hii juu kabisa ya pair.js
 
 async function getPairCode(phoneNumber, res) {
+    // 1. FUTA SESSION ZA ZAMANI KUZUIA MGONGANO
+    if (fs.existsSync('./session')) {
+        fs.rmSync('./session', { recursive: true, force: true });
+    }
+
     const { state, saveCreds } = await useMultiFileAuthState('./session');
     const { version } = await fetchLatestBaileysVersion();
 
@@ -19,68 +15,31 @@ async function getPairCode(phoneNumber, res) {
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
         },
         version,
-        browser: Browsers.ubuntu("Chrome"), // CHROME LINUX FIX
+        browser: Browsers.ubuntu("Chrome"),
         logger: pino({ level: "fatal" }),
-        // SPEED OPTIMIZATIONS
+        // Speed tweaks
         syncFullHistory: false,
         shouldSyncHistoryMessage: () => false,
-        maxMsgSyncLimit: 0,
         connectTimeoutMs: 60000,
     });
 
     if (!socket.authState.creds.registered) {
-        await delay(2500); // Muda kidogo wa kuzuia Error 428
+        await delay(3000); // Subiri socket iwe "Stable"
         const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
 
         try {
+            console.log(`📡 Requesting code for NEW number: ${cleanNumber}`);
             const code = await socket.requestPairingCode(cleanNumber);
-            if (!res.headersSent) return res.json({ code: code });
+            
+            if (!res.headersSent) {
+                return res.json({ code: code });
+            }
         } catch (error) {
-            console.error("Pairing Request Failed:", error);
-            if (!res.headersSent) return res.status(500).json({ error: "WhatsApp Busy" });
+            console.error("❌ Pairing Error:", error);
+            if (!res.headersSent) {
+                return res.status(500).json({ error: "WhatsApp imekataa request. Subiri kidogo." });
+            }
         }
     }
-
-    socket.ev.on('creds.update', saveCreds);
-
-    // COMMAND LOGIC WITH PREFIX (.)
-    socket.ev.on('messages.upsert', async (chatUpdate) => {
-        try {
-            const msg = chatUpdate.messages[0];
-            if (!msg.message || msg.key.fromMe) return;
-
-            const mText = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
-            const from = msg.key.remoteJid;
-            const prefix = ".";
-
-            if (mText.startsWith(prefix)) {
-                const command = mText.slice(prefix.length).trim().split(/ +/).shift().toLowerCase();
-
-                if (command === "ping") {
-                    const start = Date.now();
-                    const { key } = await socket.sendMessage(from, { text: "🚀" });
-                    const end = Date.now();
-                    await socket.sendMessage(from, { 
-                        text: `⚡ *JAMPAN-XMD:* Pong!\nSpeed: *${end - start}ms*`,
-                        edit: key 
-                    });
-                }
-            }
-        } catch (e) { console.log(e); }
-    });
-
-    socket.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect } = update;
-        if (connection === 'open') {
-            console.log("✅ JAMPAN-XMD: Connected!");
-        }
-        if (connection === 'close') {
-            const reason = lastDisconnect?.error?.output?.statusCode;
-            if (reason !== DisconnectReason.loggedOut) {
-                // Re-init connection here if needed
-            }
-        }
-    });
+    // ... endelea na kodi iliyobaki ya creds.update na messages.upsert
 }
-
-module.exports = { getPairCode };
