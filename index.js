@@ -8,56 +8,63 @@ const {
 const app = express();
 
 app.use(cors());
-app.use(express.json());
 
 const PORT =
     process.env.PORT || 3000;
 
-app.get('/', async (req, res) => {
+app.get('/', (req, res) => {
 
     res.send(
-        '⚡ JAMPAN-XMD SERVER ACTIVE'
+        '⚡ JAMPAN-XMD ACTIVE'
     );
 
 });
 
 app.get('/pair', async (req, res) => {
 
-    const number =
-        req.query.number;
-
-    if (!number) {
-
-        return res.status(400).json({
-            status: false,
-            error: 'Number required'
-        });
-
-    }
-
     try {
 
-        await startBot(number, res);
+        const number =
+            req.query.number;
+
+        if (!number) {
+
+            return res.json({
+                status: false,
+                error: 'Number missing'
+            });
+
+        }
+
+        const code =
+            await startBot(number);
+
+        return res.json({
+
+            status: true,
+
+            code: code
+                .match(/.{1,4}/g)
+                .join('-')
+
+        });
 
     } catch (err) {
 
         console.log(err);
 
-        if (!res.headersSent) {
+        return res.json({
+            status: false,
+            error: String(err)
+        });
 
-            res.status(500).json({
-                status: false,
-                error: 'Server busy'
-            });
-
-        }
     }
 });
 
 app.listen(PORT, () => {
 
     console.log(
-        `🚀 Server running on ${PORT}`
+        `🚀 Server running ${PORT}`
     );
 
 });
