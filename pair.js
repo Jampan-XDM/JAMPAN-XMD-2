@@ -2,29 +2,17 @@ const {
     default: makeWASocket,
     useMultiFileAuthState,
     fetchLatestBaileysVersion,
-    Browsers,
     makeCacheableSignalKeyStore,
-    DisconnectReason
+    Browsers
 } = require('@whiskeysockets/baileys');
 
 const pino = require('pino');
-const fs = require('fs');
 const path = require('path');
-
-const commands = require('./command');
 
 const sessionPath =
     path.join(__dirname, 'session');
 
 async function startBot(number) {
-
-    if (!fs.existsSync(sessionPath)) {
-
-        fs.mkdirSync(sessionPath, {
-            recursive: true
-        });
-
-    }
 
     const {
         state,
@@ -44,13 +32,14 @@ async function startBot(number) {
             level: 'silent'
         }),
 
-        printQRInTerminal: false,
-
         browser: Browsers.macOS(
-            'Desktop'
+            'Chrome'
         ),
 
+        printQRInTerminal: false,
+
         auth: {
+
             creds: state.creds,
 
             keys:
@@ -62,15 +51,7 @@ async function startBot(number) {
                 )
         },
 
-        syncFullHistory: false,
-        markOnlineOnConnect: false,
-        defaultQueryTimeoutMs: undefined,
-        connectTimeoutMs: 30000,
-        keepAliveIntervalMs: 10000,
-        retryRequestDelayMs: 500,
-        fireInitQueries: false,
-        emitOwnEvents: false,
-        generateHighQualityLinkPreview: false
+        syncFullHistory: false
     });
 
     sock.ev.on(
@@ -78,59 +59,19 @@ async function startBot(number) {
         saveCreds
     );
 
-    // GENERATE PAIR FAST
-    let code;
-
-    try {
-
-        if (
-            !sock.authState.creds
-            .registered
-        ) {
-
-            code =
-                await sock.requestPairingCode(
-                    number
-                );
-
-            console.log(
-                'PAIR CODE:',
-                code
-            );
-
-        }
-
-    } catch (err) {
-
-        console.log(
-            'PAIR ERROR:',
-            err
+    const code =
+        await sock.requestPairingCode(
+            number
         );
 
-        throw err;
+    console.log(
+        'PAIR CODE:',
+        code
+    );
 
-    }
-
-    // CONNECTION EVENTS
     sock.ev.on(
         'connection.update',
-        async (update) => {
-
-            const {
-                connection,
-                lastDisconnect
-            } = update;
-
-            if (
-                connection ===
-                'connecting'
-            ) {
-
-                console.log(
-                    '🔄 Connecting...'
-                );
-
-            }
+        ({ connection }) => {
 
             if (
                 connection ===
@@ -141,131 +82,16 @@ async function startBot(number) {
                     '✅ Connected'
                 );
 
-                await sock.sendMessage(
-                    sock.user.id,
-                    {
-                        text:
-                            '⚡ JAMPAN-XMD CONNECTED\n\n' +
-                            '✅ Login successful\n' +
-                            '🚀 Stable System'
-                    }
-                );
-
             }
 
             if (
                 connection ===
-                'close'
+                'connecting'
             ) {
 
-                const reason =
-                    lastDisconnect
-                    ?.error?.output
-                    ?.statusCode;
-
                 console.log(
-                    '❌ Closed:',
-                    reason
+                    '🔄 Connecting...'
                 );
-
-                if (
-                    reason ===
-                    DisconnectReason
-                    .loggedOut
-                ) {
-
-                    fs.rmSync(
-                        sessionPath,
-                        {
-                            recursive: true,
-                            force: true
-                        }
-                    );
-
-                    console.log(
-                        '🗑 Session Deleted'
-                    );
-
-                } else {
-
-                    console.log(
-                        '♻️ Reconnecting...'
-                    );
-
-                    startBot(number);
-
-                }
-            }
-        }
-    );
-
-    // COMMAND HANDLER
-    sock.ev.on(
-        'messages.upsert',
-        async ({ messages }) => {
-
-            try {
-
-                const msg =
-                    messages[0];
-
-                if (!msg.message)
-                    return;
-
-                if (
-                    msg.key.fromMe
-                ) return;
-
-                const from =
-                    msg.key.remoteJid;
-
-                const body =
-                    msg.message
-                    .conversation ||
-
-                    msg.message
-                    .extendedTextMessage
-                    ?.text ||
-
-                    '';
-
-                const prefix = '.';
-
-                if (
-                    !body.startsWith(
-                        prefix
-                    )
-                ) return;
-
-                const args =
-                    body.slice(1)
-                    .trim()
-                    .split(/ +/);
-
-                const command =
-                    args.shift()
-                    .toLowerCase();
-
-                if (
-                    commands[
-                        command
-                    ]
-                ) {
-
-                    await commands[
-                        command
-                    ](
-                        sock,
-                        from,
-                        args,
-                        msg
-                    );
-
-                }
-
-            } catch (err) {
-
-                console.log(err);
 
             }
         }
