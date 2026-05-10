@@ -1,52 +1,28 @@
-const { 
-    default: makeWASocket, 
-    useMultiFileAuthState, 
-    Browsers, 
-    delay, 
-    fetchLatestBaileysVersion 
-} = require("@whiskeysockets/baileys");
-const pino = require("pino");
-const fs = require('fs');
+const { state, saveCreds } = await useMultiFileAuthState('session');
+const { version } = await fetchLatestBaileysVersion();
 
-async function startPairing(phoneNumber) {
-    const { state, saveCreds } = await useMultiFileAuthState('session');
-    const { version } = await fetchLatestBaileysVersion();
+const sock = makeWASocket({
+    version,
+    auth: state, // Hakikisha hii state ipo
+    printQRInTerminal: false,
+    logger: pino({ level: "silent" }),
+    // TUMIA HII: Inazuia WhatsApp isikukatalie connection
+    browser: Browsers.ubuntu('Chrome'),
+    
+    // --- HIZI LINE 2 NDIO ZINAZUIA FAIL TO LOGIN ---
+    mobile: false, // Weka false kama unatumia pairing code
+    markOnlineOnConnect: true,
+    
+    // Zuia sync ya historia inayoweza ku-crash server
+    syncFullHistory: false,
+    shouldSyncHistoryMessage: () => false,
+    
+    // Ongeza muda wa kusubiri handshake
+    connectTimeoutMs: 60000,
+    defaultQueryTimeoutMs: 0,
+});
 
-    const sock = makeWASocket({
-        version,
-        auth: state,
-        printQRInTerminal: false,
-        logger: pino({ level: "silent" }),
-        browser: ["Ubuntu", "Chrome", "20.0.04"], // Imara zaidi
-        syncFullHistory: false, // USI-SYNC historia ya zamani
-        shouldSyncHistoryMessage: () => false,
-        connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 0,
-    });
-
-    sock.ev.on('creds.update', saveCreds);
-
-    return new Promise(async (resolve, reject) => {
-        const timeout = setTimeout(() => {
-            sock.end();
-            reject(new Error("Timeout"));
-        }, 30000);
-
-        try {
-            await delay(5000);
-            let cleanedNumber = phoneNumber.replace(/[^0-9]/g, '');
-            
-            if (!sock.authState.creds.registered) {
-                const code = await sock.requestPairingCode(cleanedNumber);
-                clearTimeout(timeout);
-                resolve(code);
-            }
-        } catch (error) {
-            clearTimeout(timeout);
-            sock.end();
-            reject(error);
-        }
-    });
-}
-
-module.exports = { startPairing };
+// LAZIMA: Update creds kila zinapobadilika
+sock.ev.on('creds.update', async () => {
+    await saveCreds();
+});
