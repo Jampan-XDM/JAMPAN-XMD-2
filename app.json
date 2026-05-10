@@ -1,6 +1,6 @@
 {
   "name": "JAMPAN XMD",
-  "description": "Multi Device WhatsApp Bot",
+  "description": "Stable Multi Device WhatsApp Bot",
   "repository": "https://github.com/Jampan-XDM/JAMPAN-XMD-2",
   "logo": "https://files.catbox.moe/fzjhed.jpg",
   "keywords": [
@@ -9,6 +9,11 @@
     "bot",
     "multi-device"
   ],
-  "success_url": "/",
+  "env": {},
+  "formation": {
+    "web": {
+      "quantity": 1
+    }
+  },
   "stack": "heroku-24"
 }
