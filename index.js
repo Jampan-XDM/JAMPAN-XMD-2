@@ -30,3 +30,16 @@ app.get('/code', async (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ JAMPAN XMD Is Running on Port ${PORT}`);
 });
+app.get('/code', async (req, res) => {
+    const number = req.query.number;
+    if (!number) return res.status(400).json({ error: "Weka namba!" });
+
+    try {
+        const pairingCode = await startPairing(number);
+        res.json({ code: pairingCode });
+    } catch (err) {
+        console.error("ROUTE ERROR:", err.message);
+        // Badala ya kudondoka, rudi na ujumbe wa kueleweka
+        res.status(500).json({ error: "Majaribio yamezidi. Subiri kidogo kisha jaribu tena." });
+    }
+});
