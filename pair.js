@@ -1,7 +1,24 @@
+const { 
+    default: makeWASocket, 
+    useMultiFileAuthState, 
+    Browsers, 
+    delay, 
+    fetchLatestBaileysVersion,
+    DisconnectReason
+} = require("@whiskeysockets/baileys");
+const pino = require("pino");
+const fs = require('fs');
+const path = require('path');
+
 async function startPairing(phoneNumber) {
+    // FUTA SESSION KWA USALAMA (Try-Catch kuzuia crash)
     const sessionPath = path.join(__dirname, 'session');
-    if (fs.existsSync(sessionPath)) {
-        fs.rmSync(sessionPath, { recursive: true, force: true });
+    try {
+        if (fs.existsSync(sessionPath)) {
+            fs.rmSync(sessionPath, { recursive: true, force: true });
+        }
+    } catch (e) {
+        console.log("Session clear error (ignored):", e.message);
     }
 
     const { state, saveCreds } = await useMultiFileAuthState('session');
@@ -12,46 +29,51 @@ async function startPairing(phoneNumber) {
         auth: state,
         printQRInTerminal: false,
         logger: pino({ level: "silent" }),
-        // BADILISHA HAPA: Tumia MacOS Chrome ili ionekane kama PC ya kawaida
-        browser: Browsers.macOS("Chrome"),
+        browser: Browsers.macOS("Safari"), // Safari inakubali haraka
         syncFullHistory: false,
-        markOnlineOnConnect: false, // Iwe false kuzuia kuji-connect mapema mno
     });
 
     sock.ev.on('creds.update', saveCreds);
 
     return new Promise(async (resolve, reject) => {
-        // Timeout kuzuia server isizunguke milele kama imekwama
+        // 1. Weka Timeout ya sekunde 20
         const timeout = setTimeout(() => {
             sock.end();
-            reject(new Error("Request Timed Out"));
-        }, 30000); 
+            reject(new Error("WhatsApp Server Timeout"));
+        }, 20000);
 
         sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect } = update;
+            const { connection } = update;
             if (connection === 'open') {
+                console.log('✅ Connected!');
                 const myNumber = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-                await sock.sendMessage(myNumber, { text: `*JAMPAN XMD CONNECTED!* ✅` });
-                // MUHIMU: Baada ya ku-pair, usifunge hapa, acha bot iendelee
-            }
-            if (connection === 'close') {
-                console.log("Connection closed, trying to fix...");
+                await sock.sendMessage(myNumber, { text: `*JAMPAN XMD* Connected! ✅` });
             }
         });
 
         try {
-            await delay(5000); // Ipe sekunde 5 kamili iwe imetulia
-            let cleanedNumber = phoneNumber.replace(/[^0-9]/g, '');
+            // 2. Muda wa socket kujiandaa
+            await delay(3000); 
             
+            let cleanedNumber = phoneNumber.replace(/[^0-9]/g, '');
+            console.log("Requesting code for:", cleanedNumber);
+
             if (!sock.authState.creds.registered) {
+                // 3. Omba kodi
                 const code = await sock.requestPairingCode(cleanedNumber);
-                clearTimeout(timeout); // Ondoa timeout kwa sababu kodi imepatikana
+                clearTimeout(timeout);
                 resolve(code);
+            } else {
+                clearTimeout(timeout);
+                reject(new Error("Namba tayari imeshaunganishwa!"));
             }
         } catch (error) {
             clearTimeout(timeout);
+            console.error("Pairing Error Detail:", error);
             sock.end();
             reject(error);
         }
     });
 }
+
+module.exports = { startPairing };
