@@ -3,12 +3,12 @@ const {
     useMultiFileAuthState, 
     Browsers, 
     delay, 
-    fetchLatestBaileysVersion 
+    fetchLatestBaileysVersion,
+    DisconnectReason
 } = require("@whiskeysockets/baileys");
 const pino = require("pino");
 
 async function startPairing(phoneNumber) {
-    // 1. Tumia state na saveCreds
     const { state, saveCreds } = await useMultiFileAuthState('session');
     const { version } = await fetchLatestBaileysVersion();
 
@@ -18,29 +18,33 @@ async function startPairing(phoneNumber) {
         printQRInTerminal: false,
         logger: pino({ level: "silent" }),
         browser: Browsers.ubuntu("Chrome"),
-        // 2. Ongeza hizi mbili kuzuia kupoteza muda (Fast Auth)
+        // --- HIZI SETTINGS ZINAUA "ENDLESS LOADING" ---
         syncFullHistory: false,
-        markOnlineOnConnect: true 
+        markOnlineOnConnect: true,
+        connectTimeoutMs: 60000, 
+        defaultQueryTimeoutMs: 0,
+        keepAliveIntervalMs: 10000,
+        generateHighQualityLink: true
     });
 
-    // 3. LAZIMA uweke hii hapa juu kurekodi credentials
+    // Muhimu kwa ajili ya Heroku
     sock.ev.on('creds.update', saveCreds);
 
-    // 4. LINDENI MUUNGANISHO (Connection Fix)
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
-        if (connection === 'open') {
-            console.log("✅ JAMPAN XMD Connected Successfully!");
+        if (connection === 'close') {
+            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            console.log('Connection closed. Reconnecting...', shouldReconnect);
+        } else if (connection === 'open') {
+            console.log('✅ JAMPAN XMD IMEKUBALI! Ipo hewani.');
         }
     });
 
-    await delay(3000);
+    await delay(5000); // Ipe muda wa kutulia
 
     if (!sock.authState.creds.registered) {
         try {
             let cleanedNumber = phoneNumber.replace(/[^0-9]/g, '');
-            // 5. Baadhi ya matoleo ya Baileys yanahitaji delay kidogo hapa
-            await delay(1500);
             let code = await sock.requestPairingCode(cleanedNumber);
             return code;
         } catch (error) {
