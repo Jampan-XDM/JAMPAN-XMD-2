@@ -21,7 +21,7 @@ app.get("/", (req, res) => {
 
 })
 
-// PAIR ROUTE
+// PAIR
 app.get("/pair", async (req, res) => {
 
     try {
@@ -30,7 +30,7 @@ app.get("/pair", async (req, res) => {
 
         if (!number) {
             return res.send(
-                "❌ Example:\n/pair?number=255674229015"
+                "❌ Example: /pair?number=255674229015"
             )
         }
 
@@ -41,8 +41,10 @@ app.get("/pair", async (req, res) => {
 
         ensureSession(sessionPath)
 
-        const { state, saveCreds } =
-            await useMultiFileAuthState(sessionPath)
+        const {
+            state,
+            saveCreds
+        } = await useMultiFileAuthState(sessionPath)
 
         const { version } =
             await fetchLatestBaileysVersion()
@@ -57,21 +59,23 @@ app.get("/pair", async (req, res) => {
 
             printQRInTerminal: false,
 
-            auth: state,
+            browser: [
+                "Chrome (Linux)",
+                "Chrome",
+                "120.0.0.0"
+            ],
 
-            browser: ["Chrome (Linux)", "Chrome", "120.0.0.0"]
+            auth: state
 
         })
 
-        sock.ev.on("creds.update", saveCreds)
-
-        // WAIT SMALL DELAY
-        await new Promise(resolve =>
-            setTimeout(resolve, 4000)
+        sock.ev.on(
+            "creds.update",
+            saveCreds
         )
 
-        // CHECK IF REGISTERED
-        if (sock.authState.creds.registered) {
+        // IMPORTANT FIX
+        if (state.creds.registered) {
 
             await startBot(sessionId)
 
@@ -81,7 +85,11 @@ app.get("/pair", async (req, res) => {
 
         }
 
-        // REQUEST PAIR CODE
+        // WAIT BEFORE REQUEST
+        await new Promise(resolve =>
+            setTimeout(resolve, 5000)
+        )
+
         const code =
             await sock.requestPairingCode(number)
 
@@ -113,13 +121,12 @@ color:#00ff88;
 
 <div class="code">${code}</div>
 
-<p>Open WhatsApp → Linked Devices → Enter Code</p>
+<p>Open WhatsApp → Linked Devices → Link with phone number</p>
 
 </body>
 </html>
 `)
 
-        // START BOT AFTER PAIR
         setTimeout(() => {
 
             startBot(sessionId)
@@ -128,13 +135,12 @@ color:#00ff88;
 
     } catch (err) {
 
-        console.log("PAIR ROUTE ERROR:", err)
+        console.log("PAIR ERROR:", err)
 
         if (!res.headersSent) {
 
             res.send(`
 <h2>❌ SERVER ERROR</h2>
-<p>Check Heroku Logs</p>
 `)
 
         }
@@ -143,10 +149,13 @@ color:#00ff88;
 
 })
 
-const PORT = process.env.PORT || 3000
+const PORT =
+    process.env.PORT || 3000
 
 app.listen(PORT, () => {
 
-    console.log(`✅ SERVER RUNNING ON PORT ${PORT}`)
+    console.log(
+        `✅ SERVER RUNNING ON PORT ${PORT}`
+    )
 
 })
