@@ -16,22 +16,6 @@ app.get('/', (req, res) => {
 
 app.get('/code', async (req, res) => {
     const number = req.query.number;
-    if (!number) return res.status(400).json({ error: "Weka namba ya simu!" });
-
-    try {
-        const pairingCode = await startPairing(number);
-        res.json({ code: pairingCode });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Server imeshindwa kutoa kodi. Subiri dakika 15 uone kama utakuwa umekatwa block na WhatsApp." });
-    }
-});
-
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`✅ JAMPAN XMD Is Running on Port ${PORT}`);
-});
-app.get('/code', async (req, res) => {
-    const number = req.query.number;
     if (!number) return res.status(400).json({ error: "Weka namba!" });
 
     try {
