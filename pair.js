@@ -15,7 +15,7 @@ const { ensureSession } = require("./auth")
 const app = express()
 
 // HOME
-app.get("/", async (req, res) => {
+app.get("/", (req, res) => {
 
     res.send("✅ JAMPAN XMD BOT ACTIVE")
 
@@ -24,13 +24,15 @@ app.get("/", async (req, res) => {
 // PAIR ROUTE
 app.get("/pair", async (req, res) => {
 
-    const number = req.query.number
-
-    if (!number) {
-        return res.send("❌ Example: /pair?number=255674229015")
-    }
-
     try {
+
+        const number = req.query.number
+
+        if (!number) {
+            return res.send(
+                "❌ Example:\n/pair?number=255674229015"
+            )
+        }
 
         const sessionId = number
 
@@ -55,67 +57,86 @@ app.get("/pair", async (req, res) => {
 
             printQRInTerminal: false,
 
-            browser: ["Chrome (Linux)", "Chrome", "120.0.0.0"],
+            auth: state,
 
-            auth: state
+            browser: ["Chrome (Linux)", "Chrome", "120.0.0.0"]
 
         })
 
         sock.ev.on("creds.update", saveCreds)
 
-        // ALREADY CONNECTED
+        // WAIT SMALL DELAY
+        await new Promise(resolve =>
+            setTimeout(resolve, 4000)
+        )
+
+        // CHECK IF REGISTERED
         if (sock.authState.creds.registered) {
 
             await startBot(sessionId)
 
-            return res.send("✅ DEVICE ALREADY CONNECTED")
+            return res.send(
+                "✅ DEVICE ALREADY CONNECTED"
+            )
 
         }
 
-        // WAIT CONNECTION OPEN
-        sock.ev.on("connection.update", async (update) => {
+        // REQUEST PAIR CODE
+        const code =
+            await sock.requestPairingCode(number)
 
-            const { connection } = update
+        console.log("PAIR CODE:", code)
 
-            if (connection === "open") {
+        res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+<title>JAMPAN XMD</title>
+<style>
+body{
+background:#0d1117;
+color:white;
+font-family:sans-serif;
+text-align:center;
+padding-top:50px;
+}
+.code{
+font-size:40px;
+font-weight:bold;
+color:#00ff88;
+}
+</style>
+</head>
+<body>
 
-                try {
-
-                    const code =
-                        await sock.requestPairingCode(number)
-
-                    res.send(`
 <h2>✅ JAMPAN XMD PAIR CODE</h2>
-<h1>${code}</h1>
-<p>Link Device → Enter Code</p>
+
+<div class="code">${code}</div>
+
+<p>Open WhatsApp → Linked Devices → Enter Code</p>
+
+</body>
+</html>
 `)
 
-                    console.log("✅ PAIR CODE:", code)
+        // START BOT AFTER PAIR
+        setTimeout(() => {
 
-                    setTimeout(() => {
-                        startBot(sessionId)
-                    }, 8000)
+            startBot(sessionId)
 
-                } catch (err) {
+        }, 10000)
 
-                    console.log("PAIR ERROR:", err)
+    } catch (err) {
 
-                    if (!res.headersSent) {
-                        res.send("❌ FAILED TO GET PAIR CODE")
-                    }
-
-                }
-
-            }
-
-        })
-
-    } catch (e) {
-
-        console.log("MAIN ERROR:", e)
+        console.log("PAIR ROUTE ERROR:", err)
 
         if (!res.headersSent) {
-            res.send("❌ SERVER ERROR")
+
+            res.send(`
+<h2>❌ SERVER ERROR</h2>
+<p>Check Heroku Logs</p>
+`)
+
         }
 
     }
