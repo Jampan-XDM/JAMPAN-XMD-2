@@ -1,41 +1,45 @@
 const {
     default: makeWASocket,
     useMultiFileAuthState,
-    DisconnectReason,
     fetchLatestBaileysVersion,
-    Browsers
+    DisconnectReason
 } = require("@whiskeysockets/baileys")
 
 const P = require("pino")
-const fs = require("fs")
 const path = require("path")
 const { Boom } = require("@hapi/boom")
 
 const config = require("./config")
 const commands = require("./command")
-const { ensureSessionFolder } = require("./auth")
+const { ensureSession } = require("./auth")
 
 async function startBot(sessionId) {
 
     const sessionPath = path.join(config.SESSION_PATH, sessionId)
 
-    ensureSessionFolder(sessionPath)
+    ensureSession(sessionPath)
 
     const { state, saveCreds } = await useMultiFileAuthState(sessionPath)
 
     const { version } = await fetchLatestBaileysVersion()
 
     const sock = makeWASocket({
+
         version,
-        logger: P({ level: "silent" }),
+
+        logger: P({
+            level: "silent"
+        }),
+
         printQRInTerminal: false,
 
-        browser: Browsers.windows("Chrome"),
+        browser: ["Chrome (Linux)", "Chrome", "120.0.0.0"],
 
         auth: state,
 
         syncFullHistory: false,
         markOnlineOnConnect: true
+
     })
 
     sock.ev.on("creds.update", saveCreds)
@@ -52,15 +56,22 @@ async function startBot(sessionId) {
 
         if (connection === "close") {
 
-            const reason = new Boom(lastDisconnect?.error)?.output.statusCode
+            const reason =
+                new Boom(lastDisconnect?.error)?.output?.statusCode
 
             console.log("❌ CONNECTION CLOSED:", reason)
 
             if (reason !== DisconnectReason.loggedOut) {
+
+                console.log("🔄 RECONNECTING...")
                 startBot(sessionId)
+
             } else {
-                console.log("SESSION LOGGED OUT")
+
+                console.log("❌ SESSION LOGGED OUT")
+
             }
+
         }
 
     })
