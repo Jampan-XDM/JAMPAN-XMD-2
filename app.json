@@ -1,6 +1,14 @@
 {
-  "name": "JAMPAN-XMD Pairing",
-  "description": "WhatsApp Pairing Code Generator",
-  "repository": "https://github.com/your-username/jampan-xmd",
-  "keywords": ["whatsapp", "bot", "baileys", "jampan"]
+  "name": "JAMPAN XMD",
+  "description": "Multi Device WhatsApp Bot",
+  "repository": "https://github.com/Jampan-XDM/JAMPAN-XMD-2",
+  "logo": "https://files.catbox.moe/fzjhed.jpg",
+  "keywords": [
+    "whatsapp",
+    "baileys",
+    "bot",
+    "multi-device"
+  ],
+  "success_url": "/",
+  "stack": "heroku-24"
 }
