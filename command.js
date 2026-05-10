@@ -6,12 +6,10 @@ async function commands(sock, msg) {
 
         const from = msg.key.remoteJid
 
-        const message =
+        const body =
             msg.message?.conversation ||
             msg.message?.extendedTextMessage?.text ||
             ""
-
-        const body = message.trim()
 
         // PING
         if (body === `${config.PREFIX}ping`) {
@@ -25,18 +23,18 @@ async function commands(sock, msg) {
         // MENU
         if (body === `${config.PREFIX}menu`) {
 
-            let menu = `
+            const menu = `
 ╭━━━〔 ${config.BOT_NAME} 〕━━━⬣
-┃
-┃ 👑 Owner : ${config.OWNER_NAME}
-┃ 🤖 Mode  : Multi Device
-┃ ⚡ Prefix: ${config.PREFIX}
-┃
+
+👑 Owner : ${config.OWNER_NAME}
+⚡ Prefix : ${config.PREFIX}
+🤖 Mode   : Multi Device
+
 ┣━━━〔 COMMANDS 〕━━━⬣
-┃
-┃ 🏓 .ping
-┃ 📜 .menu
-┃
+
+🏓 .ping
+📜 .menu
+
 ╰━━━━━━━━━━━━━━⬣
 `
 
@@ -46,9 +44,12 @@ async function commands(sock, msg) {
 
         }
 
-    } catch (err) {
-        console.log("COMMAND ERROR:", err)
+    } catch (e) {
+
+        console.log("COMMAND ERROR:", e)
+
     }
+
 }
 
 module.exports = commands
