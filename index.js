@@ -1,24 +1,28 @@
-const express = require('express');
-const cors = require('cors'); // Hakikisha umei-install (npm install cors)
-const { startPairing } = require('./pair');
+const { sms } = require('./msg'); // Ilete file la msg.js
 
-const app = express();
+// Ndani ya connection function...
+sock.ev.on('messages.upsert', async ({ messages }) => {
+    let msg = messages[0];
+    if (!msg.message) return;
 
-// LAZIMA HII IWEPO ILI FRONTEND IPATE DATA
-app.use(cors()); 
+    // "Safi" ujumbe kwa kutumia msg.js
+    const m = sms(sock, msg);
 
-app.get('/pair', async (req, res) => {
-    let phone = req.query.number;
-    if (!phone) return res.status(400).json({ error: "No number" });
+    // Mfano wa amri:
+    const prefix = ".";
+    const isCmd = m.body.startsWith(prefix);
+    const command = isCmd ? m.body.slice(prefix.length).trim().split(' ')[0].toLowerCase() : "";
 
-    try {
-        const code = await startPairing(phone);
-        // Hapa tunatuma code kurudi kwenye Frontend
-        res.status(200).json({ code: code }); 
-    } catch (err) {
-        res.status(500).json({ error: "Failed" });
+    if (command === 'ping') {
+        await m.reply("JAMPAN XMD Is Active! 🚀");
+        await m.react("✅");
+    }
+
+    if (command === 'menu') {
+        let menu = `*JAMPAN XMD MENU*\n\n` +
+                   `🔹 ${prefix}ping - Angalia kama ipo hewani\n` +
+                   `🔹 ${prefix}owner - Wasiliana na admin\n\n` +
+                   `_Status: Online_`;
+        await m.reply(menu);
     }
 });
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0');
