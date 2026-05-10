@@ -1,95 +1,34 @@
-const {
-    default: makeWASocket,
-    useMultiFileAuthState,
-    fetchLatestBaileysVersion,
-    DisconnectReason
-} = require("@whiskeysockets/baileys")
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require("@whiskeysockets/baileys");
+const { getAuth } = require('./auth');
+const config = require('./config');
+const commandHandler = require('./command');
 
-const P = require("pino")
-const path = require("path")
-const { Boom } = require("@hapi/boom")
-
-const config = require("./config")
-const commands = require("./command")
-const { ensureSession } = require("./auth")
-
-async function setTimeout(() => {
-    startBot(sessionId)
-}, 5000) {
-
-    const sessionPath = path.join(config.SESSION_PATH, sessionId)
-
-    ensureSession(sessionPath)
-
-    const { state, saveCreds } = await useMultiFileAuthState(sessionPath)
-
-    const { version } = await fetchLatestBaileysVersion()
-
+async function connectToWhatsApp() {
+    const { state, saveCreds } = await getAuth(config.SESSION_NAME);
+    
     const sock = makeWASocket({
-
-        version,
-
-        logger: P({
-            level: "silent"
-        }),
-
-        printQRInTerminal: false,
-
-        browser: ["Chrome (Linux)", "Chrome", "120.0.0.0"],
-
         auth: state,
+        printQRInTerminal: true,
+        browser: ["Ubuntu", "Chrome", "20.0.04"]
+    });
 
-        syncFullHistory: false,
-        markOnlineOnConnect: true
+    sock.ev.on('creds.update', saveCreds);
 
-    })
-
-    sock.ev.on("creds.update", saveCreds)
-
-    sock.ev.on("connection.update", async (update) => {
-
-        const { connection, lastDisconnect } = update
-
-        if (connection === "open") {
-
-            console.log(`✅ CONNECTED : ${sessionId}`)
-
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update;
+        if (connection === 'close') {
+            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (shouldReconnect) connectToWhatsApp();
+        } else if (connection === 'open') {
+            console.log('✅ Bot imekuwa Connected Tayari!');
         }
+    });
 
-        if (connection === "close") {
-
-            const reason =
-                new Boom(lastDisconnect?.error)?.output?.statusCode
-
-            console.log("❌ CONNECTION CLOSED:", reason)
-
-            if (reason !== DisconnectReason.loggedOut) {
-
-                console.log("🔄 RECONNECTING...")
-                startBot(sessionId)
-
-            } else {
-
-                console.log("❌ SESSION LOGGED OUT")
-
-            }
-
-        }
-
-    })
-
-    sock.ev.on("messages.upsert", async ({ messages }) => {
-
-        const msg = messages[0]
-
-        if (!msg.message) return
-        if (msg.key.fromMe) return
-
-        await commands(sock, msg)
-
-    })
-
-    return sock
+    sock.ev.on('messages.upsert', async ({ messages }) => {
+        const m = messages[0];
+        if (!m.message) return;
+        await commandHandler(sock, m, config.PREFIX);
+    });
 }
 
-module.exports = startBot
+connectToWhatsApp();
