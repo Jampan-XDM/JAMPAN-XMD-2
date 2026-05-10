@@ -1,49 +1,54 @@
-module.exports = {
+const config = require("./config")
 
-    ping: async (sock, from) => {
+async function commands(sock, msg) {
 
-        const start = Date.now();
+    try {
 
-        await sock.sendMessage(from, {
-            text: '🚀 Testing speed...'
-        });
+        const from = msg.key.remoteJid
 
-        const speed =
-            Date.now() - start;
+        const message =
+            msg.message?.conversation ||
+            msg.message?.extendedTextMessage?.text ||
+            ""
 
-        await sock.sendMessage(from, {
-            text:
-                '⚡ *JAMPAN-XMD STATUS*\n\n' +
-                `🏓 Speed: ${speed}ms\n` +
-                '✅ System Online\n' +
-                '🔥 Fast Response'
-        });
+        const body = message.trim()
 
-    },
+        // PING
+        if (body === `${config.PREFIX}ping`) {
 
-    alive: async (sock, from) => {
+            await sock.sendMessage(from, {
+                text: "🏓 Pong!\n✅ JAMPAN XMD ACTIVE"
+            })
 
-        await sock.sendMessage(from, {
-            text:
-                '✅ *JAMPAN-XMD ACTIVE*\n\n' +
-                '🚀 Bot running successfully\n' +
-                '💻 Baileys Connected\n' +
-                '⚡ Stable Mode Enabled'
-        });
+        }
 
-    },
+        // MENU
+        if (body === `${config.PREFIX}menu`) {
 
-    menu: async (sock, from) => {
+            let menu = `
+╭━━━〔 ${config.BOT_NAME} 〕━━━⬣
+┃
+┃ 👑 Owner : ${config.OWNER_NAME}
+┃ 🤖 Mode  : Multi Device
+┃ ⚡ Prefix: ${config.PREFIX}
+┃
+┣━━━〔 COMMANDS 〕━━━⬣
+┃
+┃ 🏓 .ping
+┃ 📜 .menu
+┃
+╰━━━━━━━━━━━━━━⬣
+`
 
-        await sock.sendMessage(from, {
-            text:
-                '╔═══〔 JAMPAN-XMD MENU 〕═══╗\n\n' +
-                '➤ .ping\n' +
-                '➤ .alive\n' +
-                '➤ .menu\n\n' +
-                '╚══════════════════════╝'
-        });
+            await sock.sendMessage(from, {
+                text: menu
+            })
 
+        }
+
+    } catch (err) {
+        console.log("COMMAND ERROR:", err)
     }
+}
 
-};
+module.exports = commands
