@@ -21,17 +21,13 @@ app.get("/", async (req, res) => {
 
 })
 
-// PAIR
+// PAIR ROUTE
 app.get("/pair", async (req, res) => {
 
     const number = req.query.number
 
     if (!number) {
-
-        return res.send(
-            "❌ Example:\n/pair?number=255674229015"
-        )
-
+        return res.send("❌ Example: /pair?number=255674229015")
     }
 
     try {
@@ -67,34 +63,60 @@ app.get("/pair", async (req, res) => {
 
         sock.ev.on("creds.update", saveCreds)
 
-        if (!sock.authState.creds.registered) {
+        // ALREADY CONNECTED
+        if (sock.authState.creds.registered) {
 
-            const code =
-                await sock.requestPairingCode(number)
+            await startBot(sessionId)
 
-            res.send(`
-<h2>✅ JAMPAN XMD PAIR CODE</h2>
-<h1>${code}</h1>
-<p>Enter this code on WhatsApp Linked Devices</p>
-`)
-
-            setTimeout(() => {
-                startBot(sessionId)
-            }, 10000)
-
-        } else {
-
-            startBot(sessionId)
-
-            res.send("✅ DEVICE ALREADY CONNECTED")
+            return res.send("✅ DEVICE ALREADY CONNECTED")
 
         }
 
+        // WAIT CONNECTION OPEN
+        sock.ev.on("connection.update", async (update) => {
+
+            const { connection } = update
+
+            if (connection === "open") {
+
+                try {
+
+                    const code =
+                        await sock.requestPairingCode(number)
+
+                    res.send(`
+<h2>✅ JAMPAN XMD PAIR CODE</h2>
+<h1>${code}</h1>
+<p>Link Device → Enter Code</p>
+`)
+
+                    console.log("✅ PAIR CODE:", code)
+
+                    setTimeout(() => {
+                        startBot(sessionId)
+                    }, 8000)
+
+                } catch (err) {
+
+                    console.log("PAIR ERROR:", err)
+
+                    if (!res.headersSent) {
+                        res.send("❌ FAILED TO GET PAIR CODE")
+                    }
+
+                }
+
+            }
+
+        })
+
     } catch (e) {
 
-        console.log("PAIR ERROR:", e)
+        console.log("MAIN ERROR:", e)
 
-        res.send("❌ FAILED TO GENERATE PAIR CODE")
+        if (!res.headersSent) {
+            res.send("❌ SERVER ERROR")
+        }
 
     }
 
