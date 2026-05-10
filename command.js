@@ -1,55 +1,17 @@
-const config = require("./config")
+module.exports = async (sock, m, prefix) => {
+    const body = m.message.conversation || m.message.extendedTextMessage?.text;
+    if (!body || !body.startsWith(prefix)) return;
 
-async function commands(sock, msg) {
+    const command = body.slice(prefix.length).trim().split(/ +/).shift().toLowerCase();
 
-    try {
-
-        const from = msg.key.remoteJid
-
-        const body =
-            msg.message?.conversation ||
-            msg.message?.extendedTextMessage?.text ||
-            ""
-
-        // PING
-        if (body === `${config.PREFIX}ping`) {
-
-            await sock.sendMessage(from, {
-                text: "🏓 Pong!\n✅ JAMPAN XMD ACTIVE"
-            })
-
-        }
-
-        // MENU
-        if (body === `${config.PREFIX}menu`) {
-
-            const menu = `
-╭━━━〔 ${config.BOT_NAME} 〕━━━⬣
-
-👑 Owner : ${config.OWNER_NAME}
-⚡ Prefix : ${config.PREFIX}
-🤖 Mode   : Multi Device
-
-┣━━━〔 COMMANDS 〕━━━⬣
-
-🏓 .ping
-📜 .menu
-
-╰━━━━━━━━━━━━━━⬣
-`
-
-            await sock.sendMessage(from, {
-                text: menu
-            })
-
-        }
-
-    } catch (e) {
-
-        console.log("COMMAND ERROR:", e)
-
+    if (command === 'ping') {
+        await sock.sendMessage(m.key.remoteJid, { text: 'Pong! 🏓 Bot is Active.' });
     }
 
-}
-
-module.exports = commands
+    if (command === 'menu') {
+        let menuText = `*--- ${require('./config').BOT_NAME} ---*\n\n`;
+        menuText += `1. ${prefix}ping - Angalia kama bot ipo hewani\n`;
+        menuText += `2. ${prefix}menu - Onyesha orodha hii\n\n_Powered by Jampani Tech_`;
+        await sock.sendMessage(m.key.remoteJid, { text: menuText });
+    }
+};
