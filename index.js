@@ -1,34 +1,37 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require("@whiskeysockets/baileys");
-const { getAuth } = require('./auth');
-const config = require('./config');
-const commandHandler = require('./command');
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const { startPairing } = require('./pair');
 
-async function connectToWhatsApp() {
-    const { state, saveCreds } = await getAuth(config.SESSION_NAME);
+const app = express();
+
+// 1. Ruhusu kutoa data nje (CORS)
+app.use(cors());
+app.use(express.json());
+
+// 2. Serve Frontend: Weka index.html yako ndani ya folder la 'public'
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 3. API Endpoint ya kupata Pairing Code
+app.get('/pair', async (req, res) => {
+    let phone = req.query.number;
     
-    const sock = makeWASocket({
-        auth: state,
-        printQRInTerminal: true,
-        browser: ["Ubuntu", "Chrome", "20.0.04"]
-    });
+    if (!phone) {
+        return res.status(400).json({ error: "Tafadhali weka namba ya simu!" });
+    }
 
-    sock.ev.on('creds.update', saveCreds);
+    try {
+        // Tunaita logic kutoka pair.js
+        const code = await startPairing(phone);
+        res.json({ code: code });
+    } catch (err) {
+        console.error("Pairing Error:", err);
+        res.status(500).json({ error: "Baileys imeshindwa kutengeneza code." });
+    }
+});
 
-    sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect } = update;
-        if (connection === 'close') {
-            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) connectToWhatsApp();
-        } else if (connection === 'open') {
-            console.log('✅ Bot imekuwa Connected Tayari!');
-        }
-    });
-
-    sock.ev.on('messages.upsert', async ({ messages }) => {
-        const m = messages[0];
-        if (!m.message) return;
-        await commandHandler(sock, m, config.PREFIX);
-    });
-}
-
-connectToWhatsApp();
+// 4. FIX: Heroku Port Binding
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Jampani Bot inarun kwenye Port: ${PORT}`);
+});
