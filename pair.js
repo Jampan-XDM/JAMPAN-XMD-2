@@ -8,7 +8,7 @@ const {
 const pino = require("pino");
 
 async function startPairing(phoneNumber) {
-    // Tunatumia folder la 'session' kuhifadhi funguo za siri
+    // 1. Tumia state na saveCreds
     const { state, saveCreds } = await useMultiFileAuthState('session');
     const { version } = await fetchLatestBaileysVersion();
 
@@ -17,25 +17,30 @@ async function startPairing(phoneNumber) {
         auth: state,
         printQRInTerminal: false,
         logger: pino({ level: "silent" }),
-        browser: Browsers.ubuntu("Chrome"), // Browser thabiti zaidi kuzuia kigingi cha loading
-        syncFullHistory: false, // Inapunguza muda wa ku-load chat za zamani
-        mobile: false
+        browser: Browsers.ubuntu("Chrome"),
+        // 2. Ongeza hizi mbili kuzuia kupoteza muda (Fast Auth)
+        syncFullHistory: false,
+        markOnlineOnConnect: true 
     });
 
-    // --- HIKI NDICHO KIPENGELE MUHIMU ---
-    // Inaiambia WhatsApp: "Tayari nimepokea funguo, sasa fungua mlango!"
+    // 3. LAZIMA uweke hii hapa juu kurekodi credentials
     sock.ev.on('creds.update', saveCreds);
-    // ------------------------------------
 
-    // Inasubiri socket iunganishwe vizuri
+    // 4. LINDENI MUUNGANISHO (Connection Fix)
+    sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect } = update;
+        if (connection === 'open') {
+            console.log("✅ JAMPAN XMD Connected Successfully!");
+        }
+    });
+
     await delay(3000);
 
     if (!sock.authState.creds.registered) {
         try {
-            // Safisha namba (Ondoa alama yoyote isiyo namba)
             let cleanedNumber = phoneNumber.replace(/[^0-9]/g, '');
-            
-            // Omba code ya pairing
+            // 5. Baadhi ya matoleo ya Baileys yanahitaji delay kidogo hapa
+            await delay(1500);
             let code = await sock.requestPairingCode(cleanedNumber);
             return code;
         } catch (error) {
