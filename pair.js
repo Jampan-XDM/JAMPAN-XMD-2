@@ -1,28 +1,47 @@
-const { state, saveCreds } = await useMultiFileAuthState('session');
-const { version } = await fetchLatestBaileysVersion();
+const { 
+    default: makeWASocket, 
+    useMultiFileAuthState, 
+    delay, 
+    fetchLatestBaileysVersion,
+    Browsers
+} = require("@whiskeysockets/baileys");
+const pino = require("pino");
+const fs = require('fs');
 
-const sock = makeWASocket({
-    version,
-    auth: state, // Hakikisha hii state ipo
-    printQRInTerminal: false,
-    logger: pino({ level: "silent" }),
-    // TUMIA HII: Inazuia WhatsApp isikukatalie connection
-    browser: Browsers.ubuntu('Chrome'),
-    
-    // --- HIZI LINE 2 NDIO ZINAZUIA FAIL TO LOGIN ---
-    mobile: false, // Weka false kama unatumia pairing code
-    markOnlineOnConnect: true,
-    
-    // Zuia sync ya historia inayoweza ku-crash server
-    syncFullHistory: false,
-    shouldSyncHistoryMessage: () => false,
-    
-    // Ongeza muda wa kusubiri handshake
-    connectTimeoutMs: 60000,
-    defaultQueryTimeoutMs: 0,
-});
+async function startPairing(phoneNumber) {
+    // Kila tunapoanza, safisha session ya zamani inayoweza kuleta crash
+    if (fs.existsSync('./session')) {
+        try { fs.rmSync('./session', { recursive: true, force: true }); } catch (e) {}
+    }
 
-// LAZIMA: Update creds kila zinapobadilika
-sock.ev.on('creds.update', async () => {
-    await saveCreds();
-});
+    const { state, saveCreds } = await useMultiFileAuthState('session');
+    const { version } = await fetchLatestBaileysVersion();
+
+    const sock = makeWASocket({
+        version,
+        auth: state,
+        logger: pino({ level: "silent" }),
+        browser: Browsers.ubuntu("Chrome"),
+        syncFullHistory: false,
+        shouldSyncHistoryMessage: () => false,
+    });
+
+    sock.ev.on('creds.update', saveCreds);
+
+    return new Promise(async (resolve, reject) => {
+        try {
+            await delay(3000);
+            let cleanedNumber = phoneNumber.replace(/[^0-9]/g, '');
+            
+            if (!sock.authState.creds.registered) {
+                const code = await sock.requestPairingCode(cleanedNumber);
+                resolve(code);
+            }
+        } catch (error) {
+            console.log("Pairing Process Error:", error);
+            reject(error);
+        }
+    });
+}
+
+module.exports = { startPairing };
