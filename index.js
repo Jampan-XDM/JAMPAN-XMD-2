@@ -13,7 +13,9 @@ const config = require("./config")
 const commands = require("./command")
 const { ensureSession } = require("./auth")
 
-async function startBot(sessionId) {
+async function setTimeout(() => {
+    startBot(sessionId)
+}, 5000) {
 
     const sessionPath = path.join(config.SESSION_PATH, sessionId)
 
