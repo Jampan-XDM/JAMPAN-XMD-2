@@ -1,62 +1,81 @@
 const express = require("express")
-const startBot = require("./index")
+const path = require("path")
+const P = require("pino")
 
 const {
     default: makeWASocket,
     useMultiFileAuthState,
-    fetchLatestBaileysVersion,
-    Browsers
+    fetchLatestBaileysVersion
 } = require("@whiskeysockets/baileys")
 
-const P = require("pino")
-const path = require("path")
-const fs = require("fs")
-
 const config = require("./config")
-const { ensureSessionFolder } = require("./auth")
+const startBot = require("./index")
+const { ensureSession } = require("./auth")
 
 const app = express()
 
-app.get("/", (req, res) => {
+// HOME
+app.get("/", async (req, res) => {
+
     res.send("✅ JAMPAN XMD BOT ACTIVE")
+
 })
 
+// PAIR
 app.get("/pair", async (req, res) => {
 
     const number = req.query.number
 
     if (!number) {
-        return res.send("❌ Enter number\nExample: /pair?number=255xxxxxxxxx")
+
+        return res.send(
+            "❌ Example:\n/pair?number=255674229015"
+        )
+
     }
 
     try {
 
         const sessionId = number
-        const sessionPath = path.join(config.SESSION_PATH, sessionId)
 
-        ensureSessionFolder(sessionPath)
+        const sessionPath =
+            path.join(config.SESSION_PATH, sessionId)
 
-        const { state, saveCreds } = await useMultiFileAuthState(sessionPath)
+        ensureSession(sessionPath)
 
-        const { version } = await fetchLatestBaileysVersion()
+        const { state, saveCreds } =
+            await useMultiFileAuthState(sessionPath)
+
+        const { version } =
+            await fetchLatestBaileysVersion()
 
         const sock = makeWASocket({
+
             version,
-            logger: P({ level: "silent" }),
+
+            logger: P({
+                level: "silent"
+            }),
+
             printQRInTerminal: false,
-            browser: Browsers.macOS("Safari"),
+
+            browser: ["Chrome (Linux)", "Chrome", "120.0.0.0"],
+
             auth: state
+
         })
 
         sock.ev.on("creds.update", saveCreds)
 
         if (!sock.authState.creds.registered) {
 
-            const code = await sock.requestPairingCode(number)
+            const code =
+                await sock.requestPairingCode(number)
 
             res.send(`
 <h2>✅ JAMPAN XMD PAIR CODE</h2>
 <h1>${code}</h1>
+<p>Enter this code on WhatsApp Linked Devices</p>
 `)
 
             setTimeout(() => {
@@ -67,14 +86,15 @@ app.get("/pair", async (req, res) => {
 
             startBot(sessionId)
 
-            res.send("✅ SESSION ALREADY CONNECTED")
+            res.send("✅ DEVICE ALREADY CONNECTED")
+
         }
 
     } catch (e) {
 
-        console.log(e)
+        console.log("PAIR ERROR:", e)
 
-        res.send("❌ ERROR GENERATING PAIR CODE")
+        res.send("❌ FAILED TO GENERATE PAIR CODE")
 
     }
 
@@ -83,5 +103,7 @@ app.get("/pair", async (req, res) => {
 const PORT = process.env.PORT || 3000
 
 app.listen(PORT, () => {
+
     console.log(`✅ SERVER RUNNING ON PORT ${PORT}`)
+
 })
