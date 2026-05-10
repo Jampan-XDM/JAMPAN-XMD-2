@@ -1,19 +1,11 @@
 {
   "name": "JAMPAN XMD",
-  "description": "Stable Multi Device WhatsApp Bot",
+  "description": "WhatsApp Bot using Baileys with Pairing Code",
   "repository": "https://github.com/Jampan-XDM/JAMPAN-XMD-2",
-  "logo": "https://files.catbox.moe/fzjhed.jpg",
-  "keywords": [
-    "whatsapp",
-    "baileys",
-    "bot",
-    "multi-device"
-  ],
-  "env": {},
-  "formation": {
-    "web": {
-      "quantity": 1
+  "keywords": ["whatsapp", "bot", "baileys", "pairing"],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
     }
-  },
-  "stack": "heroku-24"
+  ]
 }
