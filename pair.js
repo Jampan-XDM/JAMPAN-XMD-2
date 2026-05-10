@@ -1,17 +1,4 @@
-const { 
-    default: makeWASocket, 
-    useMultiFileAuthState, 
-    Browsers, 
-    delay, 
-    fetchLatestBaileysVersion,
-    DisconnectReason
-} = require("@whiskeysockets/baileys");
-const pino = require("pino");
-const fs = require('fs');
-const path = require('path');
-
 async function startPairing(phoneNumber) {
-    // --- STEP 1: CLEANING SESSION ---
     const sessionPath = path.join(__dirname, 'session');
     if (fs.existsSync(sessionPath)) {
         fs.rmSync(sessionPath, { recursive: true, force: true });
@@ -25,52 +12,46 @@ async function startPairing(phoneNumber) {
         auth: state,
         printQRInTerminal: false,
         logger: pino({ level: "silent" }),
-        browser: Browsers.ubuntu("Chrome"),
+        // BADILISHA HAPA: Tumia MacOS Chrome ili ionekane kama PC ya kawaida
+        browser: Browsers.macOS("Chrome"),
         syncFullHistory: false,
-        markOnlineOnConnect: true,
+        markOnlineOnConnect: false, // Iwe false kuzuia kuji-connect mapema mno
     });
 
     sock.ev.on('creds.update', saveCreds);
 
     return new Promise(async (resolve, reject) => {
+        // Timeout kuzuia server isizunguke milele kama imekwama
+        const timeout = setTimeout(() => {
+            sock.end();
+            reject(new Error("Request Timed Out"));
+        }, 30000); 
+
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
-
             if (connection === 'open') {
-                console.log('✅ JAMPAN XMD Connected!');
-                
-                // --- STEP 2: SEND WELCOME MESSAGE (MESSAGE YOURSELF) ---
                 const myNumber = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-                const welcomeMsg = `*JAMPAN XMD CONNECTED SUCCESSFULLY!* ✅\n\n` +
-                                 `> *Status:* Active\n` +
-                                 `> *Owner:* Kelvin Jampan\n` +
-                                 `> *Bot Name:* DRAXEN-Ai\n\n` +
-                                 `Sasa unaweza kutumia bot yako kwa amani. 🔥`;
-                
-                await sock.sendMessage(myNumber, { text: welcomeMsg });
+                await sock.sendMessage(myNumber, { text: `*JAMPAN XMD CONNECTED!* ✅` });
+                // MUHIMU: Baada ya ku-pair, usifunge hapa, acha bot iendelee
             }
-
             if (connection === 'close') {
-                const reason = lastDisconnect?.error?.output?.statusCode;
-                if (reason !== DisconnectReason.loggedOut) {
-                    console.log("Connection closed, trying to fix...");
-                }
+                console.log("Connection closed, trying to fix...");
             }
         });
 
-        // --- STEP 3: REQUEST PAIRING CODE ---
         try {
-            await delay(3000); // Muda wa socket kutulia
+            await delay(5000); // Ipe sekunde 5 kamili iwe imetulia
             let cleanedNumber = phoneNumber.replace(/[^0-9]/g, '');
+            
             if (!sock.authState.creds.registered) {
                 const code = await sock.requestPairingCode(cleanedNumber);
+                clearTimeout(timeout); // Ondoa timeout kwa sababu kodi imepatikana
                 resolve(code);
             }
         } catch (error) {
-            console.error("Pairing Error:", error);
+            clearTimeout(timeout);
+            sock.end();
             reject(error);
         }
     });
 }
-
-module.exports = { startPairing };
