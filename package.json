@@ -1,14 +1,16 @@
 {
-  "name": "jampan-xmd",
-  "version": "3.0.0",
-  "main": "pair.js",
+  "name": "jampani-pairing-bot",
+  "version": "1.0.0",
+  "description": "Multi-device WhatsApp Bot using Baileys Pairing Code",
+  "main": "index.js",
   "scripts": {
-    "start": "node pair.js"
+    "start": "node index.js"
   },
   "dependencies": {
-    "@hapi/boom": "^10.0.1",
-    "@whiskeysockets/baileys": "latest",
-    "express": "^4.19.2",
-    "pino": "^9.1.0"
+    "@whiskeysockets/baileys": "^6.6.0",
+    "pino": "^8.19.0",
+    "qrcode-terminal": "^0.12.0",
+    "express": "^4.18.2",
+    "pino-pretty": "^10.2.3"
   }
 }
