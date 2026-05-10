@@ -1,10 +1,9 @@
-const { useMultiFileAuthState } = require('@whiskeysockets/baileys')
-const fs = require('fs')
+const fs = require("fs")
 
-async function getAuthState() {
-    const { state, saveCreds } = await useMultiFileAuthState('./session')
-
-    return { state, saveCreds }
+function ensureSessionFolder(path) {
+    if (!fs.existsSync(path)) {
+        fs.mkdirSync(path, { recursive: true })
+    }
 }
 
-module.exports = { getAuthState }
+module.exports = { ensureSessionFolder }
