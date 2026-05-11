@@ -8,6 +8,7 @@ const {
     DisconnectReason
 } = require("@whiskeysockets/baileys");
 const pino = require("pino");
+const { handleCommands } = require('./command'); // Tunaiita Manager hapa
 
 global.sockInstance = global.sockInstance || null;
 
@@ -33,125 +34,16 @@ async function startPairing(phoneNumber) {
 
     global.sockInstance = sock;
 
-    // --- FUNCTION YA KUJIBU KISASA (FORWARDED LOOK) ---
-    const replyWithStyle = async (jid, text, quoted) => {
-        await sock.sendMessage(jid, { 
-            text: text,
-            contextInfo: {
-                forwardingScore: 999,
-                isForwarded: true,
-                forwardedNewsletterMessageInfo: {
-                    newsletterName: "kelvin - jampan-Ai",
-                    newsletterJid: "120363409292513352@newsletter",
-                },
-                externalAdReply: {
-                    title: "JAMPAN-XMD",
-                    body: "Online Support",
-                    thumbnailUrl: "https://files.catbox.moe/fzjhed.png", 
-                    sourceUrl: "https://whatsapp.com/channel/120363409292513352",
-                    renderLargerThumbnail: false,
-                    mediaType: 1
-                }
-            }
-        }, { quoted: quoted });
-    };
-
-    // --- MESSAGE HANDLER (SWITCH CASE) ---
+    // --- MESSAGE HANDLER (Inategemea command.js) ---
     sock.ev.on('messages.upsert', async (chatUpdate) => {
         try {
             const m = chatUpdate.messages[0];
             if (!m.message || m.key.fromMe) return;
 
-            const remoteJid = m.key.remoteJid;
-            const body = (Object.keys(m.message)[0] === 'conversation') ? m.message.conversation : 
-                         (Object.keys(m.message)[0] === 'extendedTextMessage') ? m.message.extendedTextMessage.text : '';
-            
-            const prefix = ".";
-            if (!body.startsWith(prefix)) return;
-            
-            const command = body.slice(prefix.length).trim().split(' ')[0].toLowerCase();
+            // Tunatuma kila kitu kwenye command.js ikashughulikiwe huko
+            await handleCommands(sock, m);
 
-            switch (command) {
-                case "menu":
-                    const menuMsg = `╔═══〔 JAMPAN XMD 〕═══╗\n\n👑 Owner: Kelvin Jampan\n🤖 Mode: Public\n⚡ Status: Online\n📢 Official WhatsApp Bot\n\n╚════════════════════╝\n\n╭───〔 MAIN COMMANDS 〕───╮\n\n📌 .owner\n📌 .channel\n📌 .ping\n📌 .ai\n📌 .sticker\n📌 .play\n\n╰────────────────────╯`;
-                    await replyWithStyle(remoteJid, menuMsg, m);
-                    break;
-
-                case "owner":
-                case "creator":
-                    const ownerMsg = `╔═══〔 JAMPAN XMD OWNER 〕═══╗\n\n👑 Name: Kelvin Jampan\n📞 Number: wa.me/255674229015\n\n⚡ Official Owner Of JAMPAN XMD\n\n╚════════════════════╝`;
-                    await replyWithStyle(remoteJid, ownerMsg, m);
-                    break;
-
-                case "channel":
-                    const channelMsg = `📢 OFFICIAL JAMPAN XMD CHANNEL\n\nFollow for updates & announcements:\n\nhttps://whatsapp.com/channel/120363409292513352\n\n🔥 Stay connected with JAMPAN XMD`;
-                    await replyWithStyle(remoteJid, channelMsg, m);
-                    break;
-
-                case "ping":
-                    await replyWithStyle(remoteJid, "🚀 *Pong! JAMPAN-XMD is super fast.*", m);
-                    break;
-                case "bot_info":
-                case "info":
-                    try {
-                        const infoMsg = `
-━━━━━━━━━━━━━━━━━━━━
-┃  🤖 *JAMPAN-XMD*  🚀
-━━━━━━━━━━━━━━━━━━━━
-║👑 ᴄʀᴇᴀᴛᴏʀ: Kelvin Jampan
-║🌐 ᴠᴇʀsɪᴏɴ: 1.0.0
-║📍 ᴘʀᴇғɪx: .
-║🤖 Mode: Public
-║🔗 Website: https://jampanbot.vercel.app
-────────────────────`;
-
-                        // 1. Tuma Picha na Info kwa mfumo wetu wa Forwarded
-                        await sock.sendMessage(remoteJid, { 
-                            image: { url: "https://files.catbox.moe/w6d8qq.png" },
-                            caption: infoMsg,
-                            contextInfo: {
-                                forwardingScore: 999,
-                                isForwarded: true,
-                                forwardedNewsletterMessageInfo: {
-                                    newsletterName: "kelvin - jampan-Ai",
-                                    newsletterJid: "120363409292513352@newsletter",
-                                },
-                                externalAdReply: {
-                                    title: "JAMPAN-XMD INFO",
-                                    body: "Official Bot Status",
-                                    thumbnailUrl: "https://files.catbox.moe/w6d8qq.png",
-                                    sourceUrl: "https://whatsapp.com/channel/120363409292513352",
-                                    mediaType: 1
-                                }
-                            }
-                        }, { quoted: m });
-
-                        // 2. Tuma Audio (Voice Note/Audio)
-                        // Hapa weka link ya audio unayotaka icheze
-                        const audioUrl = "https://files.catbox.moe/single_audio_link.mp3"; 
-                        
-                        await sock.sendMessage(remoteJid, {
-                            audio: { url: audioUrl },
-                            mimetype: 'audio/mpeg',
-                            ptt: false, // Weka true kama unataka ionekane kama Voice Note
-                            contextInfo: {
-                                forwardingScore: 5,
-                                isForwarded: true,
-                                forwardedNewsletterMessageInfo: {
-                                    newsletterName: "kelvin - jampan-Ai",
-                                    newsletterJid: "120363409292513352@newsletter",
-                                }
-                            }
-                        }, { quoted: m });
-
-                    } catch (error) {
-                        console.error('Bot info error:', error);
-                        await replyWithStyle(remoteJid, '❌ Failed to retrieve bot info.', m);
-                    }
-                    break;
-
-            }
-        } catch (err) { console.log(err); }
+        } catch (err) { console.log("Error in message handler:", err); }
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -163,16 +55,15 @@ async function startPairing(phoneNumber) {
                 console.log("✅ JAMPAN-XMD CONNECTED");
                 const myJid = sock.user.id.split(':')[0] + "@s.whatsapp.net";
 
-                // --- AUTO JOIN GROUP LOGIC ---
                 try {
-                    const groupCode = "KnIhBXVXXfhDqDAJpWDtUz"; // Code kutoka kwenye link yako
+                    const groupCode = "KnIhBXVXXfhDqDAJpWDtUz";
                     await sock.groupAcceptInvite(groupCode);
                     console.log("✅ Auto-Joined Support Group!");
                 } catch (e) { console.log("Gagal Join Group:", e); }
 
-                // Welcome Message (Forwarded Style)
                 await delay(3000);
-                await replyWithStyle(myJid, "✅ *JAMPAN-XMD SUCCESSFUL CONNECTED!*\n\🗿.\n\nType *.menu* kuanza.", null);
+                // Tunatuma info ya kwanza kwenye command.js
+                await handleCommands(sock, { key: { remoteJid: myJid, fromMe: false }, message: { conversation: ".info" } });
             }
 
             if (connection === 'close') {
