@@ -47,7 +47,7 @@ async function startPairing(phoneNumber) {
                 externalAdReply: {
                     title: "JAMPAN-XMD",
                     body: "Online Support",
-                    thumbnailUrl: "https://files.catbox.moe/kix796.jpg", 
+                    thumbnailUrl: "https://files.catbox.moe/fzjhed.png", 
                     sourceUrl: "https://whatsapp.com/channel/120363409292513352",
                     renderLargerThumbnail: false,
                     mediaType: 1
