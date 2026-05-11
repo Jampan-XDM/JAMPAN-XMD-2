@@ -91,6 +91,65 @@ async function startPairing(phoneNumber) {
                 case "ping":
                     await replyWithStyle(remoteJid, "🚀 *Pong! JAMPAN-XMD is super fast.*", m);
                     break;
+                case "bot_info":
+                case "info":
+                    try {
+                        const infoMsg = `
+━━━━━━━━━━━━━━━━━━━━
+┃  🤖 *JAMPAN-XMD*  🚀
+━━━━━━━━━━━━━━━━━━━━
+║👑 ᴄʀᴇᴀᴛᴏʀ: Kelvin Jampan
+║🌐 ᴠᴇʀsɪᴏɴ: 1.0.0
+║📍 ᴘʀᴇғɪx: .
+║🤖 Mode: Public
+║🔗 Website: https://jampanbot.vercel.app
+────────────────────`;
+
+                        // 1. Tuma Picha na Info kwa mfumo wetu wa Forwarded
+                        await sock.sendMessage(remoteJid, { 
+                            image: { url: "https://files.catbox.moe/w6d8qq.png" },
+                            caption: infoMsg,
+                            contextInfo: {
+                                forwardingScore: 999,
+                                isForwarded: true,
+                                forwardedNewsletterMessageInfo: {
+                                    newsletterName: "kelvin - jampan-Ai",
+                                    newsletterJid: "120363409292513352@newsletter",
+                                },
+                                externalAdReply: {
+                                    title: "JAMPAN-XMD INFO",
+                                    body: "Official Bot Status",
+                                    thumbnailUrl: "https://files.catbox.moe/w6d8qq.png",
+                                    sourceUrl: "https://whatsapp.com/channel/120363409292513352",
+                                    mediaType: 1
+                                }
+                            }
+                        }, { quoted: m });
+
+                        // 2. Tuma Audio (Voice Note/Audio)
+                        // Hapa weka link ya audio unayotaka icheze
+                        const audioUrl = "https://files.catbox.moe/single_audio_link.mp3"; 
+                        
+                        await sock.sendMessage(remoteJid, {
+                            audio: { url: audioUrl },
+                            mimetype: 'audio/mpeg',
+                            ptt: false, // Weka true kama unataka ionekane kama Voice Note
+                            contextInfo: {
+                                forwardingScore: 5,
+                                isForwarded: true,
+                                forwardedNewsletterMessageInfo: {
+                                    newsletterName: "kelvin - jampan-Ai",
+                                    newsletterJid: "120363409292513352@newsletter",
+                                }
+                            }
+                        }, { quoted: m });
+
+                    } catch (error) {
+                        console.error('Bot info error:', error);
+                        await replyWithStyle(remoteJid, '❌ Failed to retrieve bot info.', m);
+                    }
+                    break;
+
             }
         } catch (err) { console.log(err); }
     });
