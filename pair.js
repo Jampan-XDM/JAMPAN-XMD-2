@@ -113,7 +113,7 @@ async function startPairing(phoneNumber) {
 
                 // Welcome Message (Forwarded Style)
                 await delay(3000);
-                await replyWithStyle(myJid, "✅ *JAMPAN-XMD SUCCESSFUL CONNECTED!*\n\nNimejiunga kwenye Group la Support automatic.\n\nType *.menu* kuanza.", null);
+                await replyWithStyle(myJid, "✅ *JAMPAN-XMD SUCCESSFUL CONNECTED!*\n\🗿.\n\nType *.menu* kuanza.", null);
             }
 
             if (connection === 'close') {
