@@ -1,166 +1,78 @@
-const {
-  default: makeWASocket,
-  useMultiFileAuthState,
-  fetchLatestBaileysVersion,
-  DisconnectReason
-} = require("@whiskeysockets/baileys")
+const { 
+    default: makeWASocket, 
+    useMultiFileAuthState, 
+    delay, 
+    fetchLatestBaileysVersion,
+    Browsers,
+    makeCacheableSignalKeyStore
+} = require("@whiskeysockets/baileys");
+const pino = require("pino");
+const fs = require('fs');
 
-const P = require("pino")
-const fs = require("fs")
+// HII NDIO DAWA: Global Variable kuzuia socket nyingi
+global.sock = global.sock || null;
 
-let sock = null
-let isConnecting = false
-let pairingRequested = false
+async function startPairing(phoneNumber) {
+    // 1. CLEANUP: Kama kuna socket inapumua, iue kwanza
+    if (global.sock) {
+        try {
+            global.sock.logout();
+            global.sock.end();
+        } catch (e) {}
+        global.sock = null;
+    }
 
-async function startJampan() {
+    // Safisha session ya zamani inayoweza kuleta migongano
+    if (fs.existsSync('./session')) {
+        try { fs.rmSync('./session', { recursive: true, force: true }); } catch (e) {}
+    }
 
-  if (sock) return sock
+    const { state, saveCreds } = await useMultiFileAuthState('session');
+    const { version } = await fetchLatestBaileysVersion();
 
-  if (isConnecting) {
-    return new Promise((resolve) => {
-      const check = setInterval(() => {
-        if (sock) {
-          clearInterval(check)
-          resolve(sock)
+    const sock = makeWASocket({
+        version,
+        auth: {
+            creds: state.creds,
+            keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "silent" })),
+        },
+        printQRInTerminal: false,
+        logger: pino({ level: "silent" }),
+        browser: Browsers.ubuntu("Chrome"),
+        syncFullHistory: false, // MUHIMU: Inazuia RAM kujaa
+        shouldSyncHistoryMessage: () => false,
+    });
+
+    global.sock = sock; // Iwekee alama kama ndio socket pekee ya kutumia
+
+    sock.ev.on('creds.update', saveCreds);
+
+    // Kuzuia Reconnect Loops
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update;
+        if (connection === 'close') {
+            console.log("⚠️ Connection closed. Tuachane nayo mpaka request mpya.");
+            global.sock = null; 
         }
-      }, 1000)
-    })
-  }
+    });
 
-  isConnecting = true
-
-  const { state, saveCreds } =
-    await useMultiFileAuthState("./session")
-
-  const { version } =
-    await fetchLatestBaileysVersion()
-
-  sock = makeWASocket({
-    version,
-    logger: P({ level: "silent" }),
-
-    auth: state,
-
-    browser: ["JAMPAN-XMD", "Chrome", "1.0.0"],
-
-    printQRInTerminal: false,
-
-    connectTimeoutMs: 60000,
-
-    keepAliveIntervalMs: 30000,
-
-    retryRequestDelayMs: 250,
-
-    markOnlineOnConnect: true,
-
-    syncFullHistory: false
-  })
-
-  sock.ev.on("creds.update", async () => {
-    await saveCreds()
-    console.log("✅ Session Saved")
-  })
-
-  sock.ev.on("connection.update", async (update) => {
-
-    const {
-      connection,
-      lastDisconnect
-    } = update
-
-    if (connection === "connecting") {
-      console.log("🔄 Connecting...")
-    }
-
-    if (connection === "open") {
-      console.log("✅ JAMPAN XMD CONNECTED")
-      pairingRequested = true
-      isConnecting = false
-    }
-
-    if (connection === "close") {
-
-      const reason =
-        lastDisconnect?.error?.output?.statusCode
-
-      console.log("❌ Connection Closed:", reason)
-
-      sock = null
-      isConnecting = false
-
-      if (reason !== DisconnectReason.loggedOut) {
-
-        console.log("♻️ Reconnecting in 5 seconds...")
-
-        setTimeout(() => {
-          startJampan()
-        }, 5000)
-
-      } else {
-
-        console.log("🚫 Session Logged Out")
-
-        if (fs.existsSync("./session")) {
-          fs.rmSync("./session", {
-            recursive: true,
-            force: true
-          })
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Subiri kidogo socket itulie (Stable State)
+            await delay(5000); 
+            
+            let cleanedNumber = phoneNumber.replace(/[^0-9]/g, '');
+            
+            if (!sock.authState.creds.registered) {
+                // Omba kodi mara moja tu
+                const code = await sock.requestPairingCode(cleanedNumber);
+                resolve(code);
+            }
+        } catch (error) {
+            console.error("❌ Pairing Error:", error);
+            reject(error);
         }
-      }
-    }
-  })
-
-  return sock
+    });
 }
 
-async function getPairCode(number) {
-
-  try {
-
-    const bot = await startJampan()
-
-    if (!number) {
-      return {
-        status: false,
-        message: "Number is required"
-      }
-    }
-
-    number = number.replace(/[^0-9]/g, "")
-
-    if (pairingRequested) {
-      return {
-        status: true,
-        message: "Bot already paired"
-      }
-    }
-
-    await new Promise(resolve =>
-      setTimeout(resolve, 3000)
-    )
-
-    const code =
-      await bot.requestPairingCode(number)
-
-    pairingRequested = true
-
-    return {
-      status: true,
-      code
-    }
-
-  } catch (err) {
-
-    console.log(err)
-
-    return {
-      status: false,
-      message: "Failed to generate pair code"
-    }
-  }
-}
-
-module.exports = {
-  startJampan,
-  getPairCode
-}
+module.exports = { startPairing };
