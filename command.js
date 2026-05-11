@@ -1,7 +1,12 @@
-// command.js - Muhifadhi wa amri zote za JAMPAN-XMD
+// command.js - Ubongo wa JAMPAN-XMD
+// Created by Kelvin Jampan
+
+// --- GLOBAL VARIABLES (Hizi zisifutwe) ---
+let currentPrefix = "."; 
+let uniqueUsers = new Set(); 
 
 const replyWithStyle = async (sock, jid, text, quoted) => {
-    // 1. Tuma Meseji ya Text kwanza
+    // 1. Tuma Meseji ya Text yenye Forwarded Look
     await sock.sendMessage(jid, { 
         text: text,
         contextInfo: {
@@ -13,7 +18,7 @@ const replyWithStyle = async (sock, jid, text, quoted) => {
             },
             externalAdReply: {
                 title: "JAMPAN-XMD",
-                body: "kelvin",
+                body: "Kelvin Jampan",
                 thumbnailUrl: "https://files.catbox.moe/fzjhed.png", 
                 sourceUrl: "https://whatsapp.com/channel/120363409292513352",
                 renderLargerThumbnail: false,
@@ -22,7 +27,7 @@ const replyWithStyle = async (sock, jid, text, quoted) => {
         }
     }, { quoted: quoted });
 
-    // 2. Tuma Audio Automatic kwa kila command
+    // 2. Tuma Audio Automatic (Theme Song)
     await sock.sendMessage(jid, {
         audio: { url: "https://files.catbox.moe/vmc7k3.mp3" },
         mimetype: 'audio/mpeg',
@@ -45,52 +50,123 @@ const handleCommands = async (sock, m) => {
                      (Object.keys(m.message)[0] === 'extendedTextMessage') ? m.message.extendedTextMessage.text : 
                      (Object.keys(m.message)[0] === 'imageMessage') ? m.message.imageMessage.caption : '';
         
-        const prefix = ".";
+        // Prefix sasa inategemea ulichoset
+        const prefix = currentPrefix; 
+
+        // Hesabu watumiaji (Max 100 plan)
+        if (!m.key.fromMe) {
+            uniqueUsers.add(m.key.remoteJid);
+        }
+
         if (!body.startsWith(prefix)) return;
         
         const command = body.slice(prefix.length).trim().split(' ')[0].toLowerCase();
+        
+        const react = async (emoji) => {
+            await sock.sendMessage(remoteJid, { react: { text: emoji, key: m.key } });
+        };
 
         switch (command) {
             case "menu":
-                const menuMsg = `╔═══〔 JAMPAN XMD 〕═══╗\n\n👑 Owner: Kelvin Jampan\n🤖 Mode: Public\n⚡ Status: Online\n📢 Official WhatsApp Bot\n\n╚════════════════════╝\n\n╭───〔 MAIN COMMANDS 〕───╮\n\n📌 .owner\n📌 .channel\n📌 .ping\n📌 .info\n📌 .sticker\n📌 .play\n\n╰────────────────────╯`;
-                await replyWithStyle(sock, remoteJid, menuMsg, m);
-                break;
-
-            case "owner":
-            case "creator":
-                const ownerMsg = `╔═══〔 JAMPAN XMD OWNER 〕═══╗\n\n👑 Name: Kelvin Jampan\n📞 Number: wa.me/255674229015\n\n⚡ Official Owner Of JAMPAN XMD\n\n╚════════════════════╝`;
-                await replyWithStyle(sock, remoteJid, ownerMsg, m);
-                break;
-
-            case "channel":
-                const channelMsg = `📢 OFFICIAL JAMPAN XMD CHANNEL\n\nFollow for updates & announcements:\n\nhttps://whatsapp.com/channel/120363409292513352\n\n🔥 Stay connected with JAMPAN XMD`;
-                await replyWithStyle(sock, remoteJid, channelMsg, m);
-                break;
-
-            case "ping":
-                await replyWithStyle(sock, remoteJid, "🚀 *Pong! JAMPAN-XMD is super fast.*", m);
-                break;
-
-            case "info":
-                const infoMsg = `
+            case "allmenu": {
+                await react("📜");
+                const allmenuText = `
 ━━━━━━━━━━━━━━━━━━━━
+┃  🤖 *JAMPAN-XMD*  🚀
+──────────────────── 
+
+👑 *OWNER COMMANDS:*
+━━━━━━━━━━━━━━━━━━━━
+> ${prefix}setprefix <alama>
+> ${prefix}mode private/public
+> ${prefix}owner 
+────────────────────
+
+*🌐 GENERAL:*
+────────────────────
+> ${prefix}ping
+> ${prefix}info
+> ${prefix}status
+> ${prefix}repo
+────────────────────
+
+*🎵 MEDIA & TOOLS:*
+────────────────────
+> ${prefix}song
+> ${prefix}video
+> ${prefix}tiktok
+> ${prefix}apk
+> ${prefix}sticker
+> ${prefix}ai
+────────────────────
+
+*🫂 GROUP:*
+────────────────────
+> ${prefix}kick
+> ${prefix}add
+> ${prefix}tagall
+> ${prefix}hidetag
+────────────────────
+
+👥 *Users:* ${uniqueUsers.size}/100
+🚀 *Server:* Heroku Team (Live)
+👑 *By Kelvin Jampan*
+
+> Alama ya sasa ni: *${prefix}*
+`;
+                await replyWithStyle(sock, remoteJid, allmenuText, m);
+                break;
+            }
+
+            case "setprefix": {
+                await react("⚙️");
+                const newPrefix = body.slice(command.length + prefix.length).trim();
+                if (!newPrefix) return await replyWithStyle(sock, remoteJid, `❌ *Weka alama unayotaka!*\nMfano: ${prefix}setprefix #`, m);
+                
+                currentPrefix = newPrefix;
+                await replyWithStyle(sock, remoteJid, `✅ *PREFIX IMEBADILISHWA!*\n\nAlama mpya: *${currentPrefix}*`, m);
+                break;
+            }
+
+            case "ping": {
+                await react("🚀");
+                await replyWithStyle(sock, remoteJid, "🚀 *Pong! JAMPAN-XMD is online and fast.*", m);
+                break;
+            }
+
+            case "owner": {
+                await react("👑");
+                await replyWithStyle(sock, remoteJid, `👑 *OWNER INFO*\n\nName: Kelvin Jampan\nWhatsApp: wa.me/255674229015\n\nJAMPAN-XMD Developer.`, m);
+                break;
+            }
+
+            case "status": {
+                await react("📊");
+                const statusMsg = `📊 *SERVER STATUS*\n\n👥 Users: ${uniqueUsers.size}/100\n🔋 Mode: Public\n⚡ Speed: Super Fast\n☁️ Host: Heroku Team`;
+                await replyWithStyle(sock, remoteJid, statusMsg, m);
+                break;
+            }
+
+            case "info": {
+                await react("🤖");
+                const infoMsg = `━━━━━━━━━━━━━━━━━━━━
 ┃  🤖 *JAMPAN-XMD*  🚀
 ━━━━━━━━━━━━━━━━━━━━
 ║👑 ᴄʀᴇᴀᴛᴏʀ: Kelvin Jampan
 ║🌐 ᴠᴇʀsɪᴏɴ: 1.0.0
-║📍 ᴘʀᴇғɪx: .
+║📍 ᴘʀᴇғɪx: ${prefix}
 ║🤖 Mode: Public
 ║🔗 Website: https://jampanbot.vercel.app
 ────────────────────`;
                 await replyWithStyle(sock, remoteJid, infoMsg, m);
                 break;
+            }
 
             default:
-                // Isijibu kitu kama amri haipo
                 break;
         }
     } catch (err) {
-        console.error("Error in command handler:", err);
+        console.error("❌ Error in command.js:", err);
     }
 };
 
