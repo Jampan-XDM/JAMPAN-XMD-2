@@ -67,56 +67,57 @@ const handleCommands = async (sock, m) => {
         };
 
         switch (command) {
-            case "menu":
-            case "allmenu": {
-                await react("📜");
-                const allmenuText = `
-━━━━━━━━━━━━━━━━━━━━
-┃  🤖 *JAMPAN-XMD*  🚀
-──────────────────── 
+            case 'menu': {
+    await react("📑");
+    
+    // Kupata muda wa sasa
+    const date = new Date().toLocaleDateString('en-TZ', { day: 'numeric', month: 'long', year: 'numeric' });
+    const time = new Date().toLocaleTimeString('en-TZ', { hour: '2-digit', minute: '2-digit' });
 
-👑 *OWNER COMMANDS:*
-━━━━━━━━━━━━━━━━━━━━
-> ${prefix}setprefix <alama>
-> ${prefix}mode private/public
-> ${prefix}owner 
-────────────────────
+    let menuText = `> ╭━━━〔 *JAMPAN-XMD* 〕━━━╮\n` +
+                   `> ┃ 👤 *Owner:* Kelvin Jampan\n` +
+                   `> ┃ 📅 *Date:* ${date}\n` +
+                   `> ┃ ⌚ *Time:* ${time}\n` +
+                   `> ╰━━━━━━━━━━━━━━━━━━╯\n\n` +
+                   
+                   `> ╭──〔 *AI & UTILITIES* 〕──╮\n` +
+                   `> ┃ 🗣️ .say [text] - TTS Audio\n` +
+                   `> ┃ 📖 .bible [verse] - Holy Bible\n` +
+                   `> ┃ 🌐 .trt [lang] [text] - Translate\n` +
+                   `> ╰━━━━━━━━━━━━━━━━━━╯\n\n` +
+                   
+                   `> ╭───〔 *GROUP TOOLS* 〕───╮\n` +
+                   `> ┃ 📇 .vcf - Export All Contacts\n` +
+                   `> ╰━━━━━━━━━━━━━━━━━━╯\n\n` +
+                   
+                   `> ╭───〔 *SERVER TOOLS* 〕───╮\n` +
+                   `> ┃ 📡 .status - Cloud API Status\n` +
+                   `> ╰━━━━━━━━━━━━━━━━━━╯\n\n` +
+                   
+                   `> *JAMPAN-XMD GLOBAL*`;
 
-*🌐 GENERAL:*
-────────────────────
-> ${prefix}ping
-> ${prefix}info
-> ${prefix}status
-> ${prefix}repo
-────────────────────
-
-*🎵 MEDIA & TOOLS:*
-────────────────────
-> ${prefix}song
-> ${prefix}video
-> ${prefix}tiktok
-> ${prefix}apk
-> ${prefix}sticker
-> ${prefix}ai
-────────────────────
-
-*🫂 GROUP:*
-────────────────────
-> ${prefix}kick
-> ${prefix}add
-> ${prefix}tagall
-> ${prefix}hidetag
-────────────────────
-
-👥 *Users:* ${uniqueUsers.size}/100
-🚀 *Server:* Heroku Team (Live)
-👑 *By Kelvin Jampan*
-
-> Alama ya sasa ni: *${prefix}*
-`;
-                await replyWithStyle(sock, remoteJid, allmenuText, m);
-                break;
+    await sock.sendMessage(remoteJid, {
+        text: menuText,
+        contextInfo: {
+            forwardingScore: 999,
+            isForwarded: true,
+            forwardedNewsletterMessageInfo: {
+                newsletterName: "Kelvin - Jampan-Ai",
+                newsletterJid: "120363409292513352@newsletter",
+            },
+            externalAdReply: {
+                title: "JAMPAN-XMD MENU",
+                body: "Developed by Kelvin Jampan",
+                thumbnailUrl: "https://files.catbox.moe/fzjhed.png",
+                sourceUrl: "https://jampanbot.vercel.app",
+                mediaType: 1
             }
+        }
+    }, { quoted: m });
+    
+    await react("✅");
+    break;
+}
 
             case "setprefix": {
                 await react("⚙️");
