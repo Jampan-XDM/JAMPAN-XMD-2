@@ -38,13 +38,7 @@ app.get('/pair', async (req, res) => {
     }
 });
 
-// --- 3. SERVER START ---
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`
-    ======================================
-       ✅ JAMPAN XMD STATUS: ONLINE
-       📱 NODE VERSION: ${process.version}
-       🌐 PORT: ${PORT}
-    ======================================
-    `);
+// Hii inatosha kabisa, haitachanganya hata ukiweka Procfile ya web na worker
+app.listen(process.env.PORT || 3000, '0.0.0.0', () => {
+    console.log("JAMPAN-XMD Server Online!");
 });
