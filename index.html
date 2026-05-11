@@ -23,14 +23,14 @@
         <h1 class="text-3xl font-black italic tracking-tighter mb-10">JAMPAN <span class="text-cyan-400">XMD</span></h1>
 
         <div id="input-area">
-            <input type="number" id="number" placeholder="255674229015" class="w-full p-4 rounded-2xl bg-slate-900/50 border border-slate-700 text-center text-lg mb-4 outline-none focus:border-cyan-500">
+            <input type="number" id="number" placeholder="255674229015" class="w-full p-4 rounded-2xl bg-slate-900/50 border border-slate-700 text-center text-lg mb-4 outline-none focus:border-cyan-500 text-white">
             <button onclick="getCode()" id="submit-btn" class="w-full py-4 rounded-2xl btn-cyan font-bold uppercase tracking-widest text-sm">Get Pairing Code</button>
         </div>
 
         <div id="result-area" class="hidden">
             <p class="text-[10px] text-gray-500 uppercase mb-2">Tap to copy code</p>
             <div id="pair-code" onclick="copyCode()" class="text-4xl bg-black/40 p-6 rounded-2xl border border-dashed border-cyan-500/50">--------</div>
-            
+
             <div class="instruction-box">
                 <p class="mb-2 uppercase font-bold text-white text-[9px]">How to use:</p>
                 <p>1. Open WhatsApp > Settings</p>
@@ -42,7 +42,11 @@
             <button onclick="location.reload()" class="w-full mt-6 py-3 rounded-xl bg-slate-800 text-[10px] uppercase font-bold tracking-widest hover:bg-slate-700">Pair New Session</button>
         </div>
 
-        <div id="loading" class="hidden mt-6 animate-pulse text-cyan-400 font-bold text-xs uppercase">Connecting to Server...</div>
+        <div id="loading" class="hidden mt-6 animate-pulse text-cyan-400 font-bold text-xs uppercase text-center">
+            <i class="fas fa-spinner fa-spin mb-2 text-lg"></i><br>
+            Connecting to Server...
+        </div>
+        
         <p class="mt-10 text-[8px] text-gray-600 uppercase tracking-[10px]">By Kelvin Jampan</p>
     </div>
 
@@ -50,23 +54,46 @@
         async function getCode() {
             const num = document.getElementById('number').value;
             if (!num) return alert("Weka namba!");
+            
+            // Ficha input na onyesha loading
             document.getElementById('input-area').classList.add('hidden');
             document.getElementById('loading').classList.remove('hidden');
 
             try {
-                const res = await fetch(`/code?number=${num}`);
+                // MUHIMU: Tunatumia /pair kulingana na kodi ya index.js tuliyorekebisha
+                const res = await fetch(`/pair?number=${num}`);
                 const data = await res.json();
+                
                 if (data.code) {
                     document.getElementById('loading').classList.add('hidden');
                     document.getElementById('result-area').classList.remove('hidden');
                     document.getElementById('pair-code').innerText = data.code;
-                } else { alert(data.error); location.reload(); }
-            } catch (e) { alert("Server Error!"); location.reload(); }
+                } else { 
+                    alert(data.error || "Imefeli kutoa kodi. Jaribu tena."); 
+                    location.reload(); 
+                }
+            } catch (e) { 
+                alert("Server Error! Hakikisha bot imewaka vizuri Heroku."); 
+                location.reload(); 
+            }
         }
+
         function copyCode() {
             const code = document.getElementById('pair-code').innerText;
-            navigator.clipboard.writeText(code);
-            alert("Code Copied: " + code);
+            if (code === "--------") return;
+            
+            navigator.clipboard.writeText(code).then(() => {
+                alert("Code Copied: " + code);
+            }).catch(err => {
+                // Fallback kwa simu zingine
+                const textArea = document.createElement("textarea");
+                textArea.value = code;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert("Code Copied: " + code);
+            });
         }
     </script>
 </body>
