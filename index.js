@@ -1,36 +1,40 @@
-const express = require('express');
-const path = require('path');
-const cors = require('cors');
-const { startPairing } = require('./pair');
+const express = require("express")
+const app = express()
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const {
+  getPairCode,
+  startJampan
+} = require("./pair")
 
-app.use(cors());
-app.use(express.static(path.join(__dirname, '')));
+app.get("/", (req, res) => {
+  res.send("JAMPAN XMD ONLINE ✅")
+})
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
+app.get("/code", async (req, res) => {
 
-app.get('/code', async (req, res) => {
-    const number = req.query.number;
-    if (!number) return res.status(400).json({ error: "Weka namba!" });
+  const number = req.query.number
 
-    try {
-        const pairingCode = await startPairing(number);
-        res.json({ code: pairingCode });
-    } catch (err) {
-        console.error("Pairing error:", err.message);
-        res.status(500).json({ error: "Imefeli kuunganisha. Jaribu tena." });
-    }
-});
+  if (!number) {
+    return res.send("Enter number")
+  }
 
-// Hii itazuia app isizimike hata kukiwa na unhandled error
-process.on('uncaughtException', (err) => {
-    console.error('There was an uncaught error', err);
-});
+  const data = await getPairCode(number)
 
-app.listen(PORT, () => {
-    console.log(`✅ JAMPAN XMD ONLINE ON PORT ${PORT}`);
-});
+  if (!data.status) {
+    return res.send(data.message)
+  }
+
+  res.send(data.code || data.message)
+})
+
+const PORT =
+  process.env.PORT || 3000
+
+app.listen(PORT, async () => {
+
+  console.log(
+    `✅ SERVER RUNNING ON ${PORT}`
+  )
+
+  await startJampan()
+})
