@@ -10,7 +10,7 @@ module.exports = async (sock, m, prefix) => {
 
     if (command === 'menu') {
         let menuText = `*--- ${require('./config').BOT_NAME} ---*\n\n`;
-        menuText += `1. ${prefix}ping - Angalia kama bot ipo hewani\n`;
+        menuText += `1. ${prefix}ping - I'm online huh\n`;
         menuText += `2. ${prefix}menu - Onyesha orodha hii\n\n_Powered by Jampani Tech_`;
         await sock.sendMessage(m.key.remoteJid, { text: menuText });
     }
