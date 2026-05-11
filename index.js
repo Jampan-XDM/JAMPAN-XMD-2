@@ -1,40 +1,29 @@
-const express = require("express")
-const app = express()
+const express = require('express');
+const cors = require('cors');
+const { getPairCode } = require('./pair');
 
-const {
-  getPairCode,
-  startJampan
-} = require("./pair")
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-app.get("/", (req, res) => {
-  res.send("JAMPAN XMD ONLINE ✅")
-})
+const PORT = process.env.PORT || 3000;
 
-app.get("/code", async (req, res) => {
+// Hii ndio itazuia Application Error
+app.get('/', (req, res) => {
+    res.send('⚡ JAMPAN-XMD IS READY FOR PAIR');
+});
 
-  const number = req.query.number
+// API ya Pairing
+app.get('/pair', async (req, res) => {
+    let num = req.query.number;
+    if (!num) return res.status(400).json({ error: "Weka namba!" });
+    try {
+        await getPairCode(num, res);
+    } catch (err) {
+        if (!res.headersSent) res.status(500).json({ error: "Server Error" });
+    }
+});
 
-  if (!number) {
-    return res.send("Enter number")
-  }
-
-  const data = await getPairCode(number)
-
-  if (!data.status) {
-    return res.send(data.message)
-  }
-
-  res.send(data.code || data.message)
-})
-
-const PORT =
-  process.env.PORT || 3000
-
-app.listen(PORT, async () => {
-
-  console.log(
-    `✅ SERVER RUNNING ON ${PORT}`
-  )
-
-  await startJampan()
-})
+app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+});
