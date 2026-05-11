@@ -3,6 +3,15 @@ const path = require('path');
 const cors = require('cors');
 const { startPairing } = require('./pair');
 
+// --- ANTI-CRASH SYSTEM (Muhimu Sana) ---
+process.on('uncaughtException', (err) => {
+    console.error('⚠️ UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('⚠️ UNHANDLED REJECTION at:', promise, 'reason:', reason);
+});
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -15,14 +24,12 @@ app.get('/', (req, res) => {
 
 app.get('/pair', async (req, res) => {
     const number = req.query.number;
-    if (!number) return res.status(400).json({ error: "Ingiza namba ya simu!" });
-
+    if (!number) return res.status(400).json({ error: "Weka namba ya simu!" });
     try {
         const pairingCode = await startPairing(number);
         res.json({ code: pairingCode });
     } catch (err) {
-        console.error("Pairing Error:", err.message);
-        res.status(500).json({ error: err.message || "Server Error" });
+        res.status(500).json({ error: err.message });
     }
 });
 
