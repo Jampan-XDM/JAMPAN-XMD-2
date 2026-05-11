@@ -10,25 +10,19 @@ const {
 const pino = require("pino");
 const fs = require('fs');
 
-// Global socket instance ili kuzuia socket nyingi kusearch pairing kwa wakati mmoja
 global.sockInstance = global.sockInstance || null;
 
 async function startPairing(phoneNumber) {
-    // 1. Kama kuna socket ya zamani, iue kabisa kuzuia mgongano
+    // 1. Safisha socket ya zamani
     if (global.sockInstance) {
         try {
-            global.sockInstance.ev.removeAllListeners('connection.update');
-            global.sockInstance.logout();
+            global.sockInstance.ev.removeAllListeners();
             global.sockInstance.end();
         } catch (e) {}
         global.sockInstance = null;
     }
 
-    // 2. Safisha folder la session kila mara kuzuia session corrupted
-    if (fs.existsSync('./session')) {
-        try { fs.rmSync('./session', { recursive: true, force: true }); } catch (e) {}
-    }
-
+    // 2. Setup auth state
     const { state, saveCreds } = await useMultiFileAuthState('session');
     const { version } = await fetchLatestBaileysVersion();
 
@@ -40,49 +34,56 @@ async function startPairing(phoneNumber) {
         },
         printQRInTerminal: false,
         logger: pino({ level: "silent" }),
-        browser: Browsers.ubuntu("Chrome"), // Msishitue WhatsApp
+        browser: Browsers.ubuntu("Chrome"),
         syncFullHistory: false,
-        shouldSyncHistoryMessage: () => false,
     });
 
     global.sockInstance = sock;
 
-    // 3. Save creds papo hapo - Hiki ndicho kilikuwa kinakosekana
-    sock.ev.on('creds.update', async () => {
-        await saveCreds();
-    });
-
     return new Promise(async (resolve, reject) => {
+        // Timeout baada ya sekunde 40 kama mambo yamekwama
         const timeout = setTimeout(() => {
             if (sock) sock.end();
-            reject(new Error("Request Timeout"));
-        }, 30000);
+            reject(new Error("Muda umeisha! Jaribu tena."));
+        }, 40000);
+
+        sock.ev.on('creds.update', saveCreds);
 
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
+
             if (connection === 'open') {
-                console.log("✅ Connected Successfully!");
+                console.log("✅ JAMPAN XMD Connected!");
                 clearTimeout(timeout);
             }
+
             if (connection === 'close') {
                 const reason = lastDisconnect?.error?.output?.statusCode;
                 console.log("❌ Connection Closed. Reason:", reason);
-                // Ukiona 401 au 428 hapa ujue namba imepata ban ya muda au session imeharibika
+
+                // DAWA YA 515 NA RESTART REQUIRED
+                if (reason === 515 || reason === DisconnectReason.restartRequired) {
+                    console.log("🔄 Restarting socket to fix connection...");
+                    startPairing(phoneNumber); 
+                } else {
+                    global.sockInstance = null;
+                    clearTimeout(timeout);
+                }
             }
         });
 
         try {
-            await delay(5000); // Ipe socket muda wa kusetup handshake
+            // Ipe Heroku sekunde 10 ya utulivu
+            await delay(10000); 
             let cleanedNumber = phoneNumber.replace(/[^0-9]/g, '');
             
             if (!sock.authState.creds.registered) {
-                // Omba kodi mara moja tu!
                 const code = await sock.requestPairingCode(cleanedNumber);
                 clearTimeout(timeout);
                 resolve(code);
             } else {
                 clearTimeout(timeout);
-                reject(new Error("Namba imesajiliwa tayari!"));
+                reject(new Error("Tayari namba hii imeshaunganishwa!"));
             }
         } catch (error) {
             clearTimeout(timeout);
