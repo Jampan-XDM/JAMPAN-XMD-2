@@ -8,12 +8,11 @@ const {
     DisconnectReason
 } = require("@whiskeysockets/baileys");
 const pino = require("pino");
-const fs = require('fs');
 
 global.sockInstance = global.sockInstance || null;
 
 async function startPairing(phoneNumber) {
-    // 1. Safisha socket ya zamani
+    // 1. Zuia Multiple Sockets
     if (global.sockInstance) {
         try {
             global.sockInstance.ev.removeAllListeners();
@@ -22,7 +21,6 @@ async function startPairing(phoneNumber) {
         global.sockInstance = null;
     }
 
-    // 2. Setup auth state
     const { state, saveCreds } = await useMultiFileAuthState('session');
     const { version } = await fetchLatestBaileysVersion();
 
@@ -32,61 +30,53 @@ async function startPairing(phoneNumber) {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "silent" })),
         },
-        printQRInTerminal: false,
-        logger: pino({ level: "silent" }),
+        logger: pino({ level: "silent" }), // Unaweza kuweka "debug" ukitaka kuona kila kitu
         browser: Browsers.ubuntu("Chrome"),
         syncFullHistory: false,
     });
 
     global.sockInstance = sock;
 
-    return new Promise(async (resolve, reject) => {
-        // Timeout baada ya sekunde 40 kama mambo yamekwama
-        const timeout = setTimeout(() => {
-            if (sock) sock.end();
-            reject(new Error("Muda umeisha! Jaribu tena."));
-        }, 40000);
+    // 2. Heartbeat: Inatuma log kila dakika 1 kuhakikisha app haijalala
+    const heartbeat = setInterval(() => {
+        if (global.sockInstance) console.log("💓 JAMPAN XMD STILL ONLINE...");
+    }, 60000);
 
+    return new Promise(async (resolve, reject) => {
         sock.ev.on('creds.update', saveCreds);
 
+        // 3. Wrap Connection Update na Try/Catch
         sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect } = update;
-
-            if (connection === 'open') {
-                console.log("✅ JAMPAN XMD Connected!");
-                clearTimeout(timeout);
-            }
-
-            if (connection === 'close') {
-                const reason = lastDisconnect?.error?.output?.statusCode;
-                console.log("❌ Connection Closed. Reason:", reason);
-
-                // DAWA YA 515 NA RESTART REQUIRED
-                if (reason === 515 || reason === DisconnectReason.restartRequired) {
-                    console.log("🔄 Restarting socket to fix connection...");
-                    startPairing(phoneNumber); 
-                } else {
-                    global.sockInstance = null;
-                    clearTimeout(timeout);
+            try {
+                const { connection, lastDisconnect } = update;
+                if (connection === 'open') {
+                    console.log("✅ CONNECTED TO WHATSAPP");
                 }
+                if (connection === 'close') {
+                    const reason = lastDisconnect?.error?.output?.statusCode;
+                    console.log("❌ Connection Closed. Reason:", reason);
+                    
+                    if (reason !== DisconnectReason.loggedOut) {
+                        console.log("🔄 Reconnecting...");
+                        startPairing(phoneNumber);
+                    } else {
+                        clearInterval(heartbeat);
+                        global.sockInstance = null;
+                    }
+                }
+            } catch (err) {
+                console.log("Error in Connection Update:", err);
             }
         });
 
         try {
-            // Ipe Heroku sekunde 10 ya utulivu
             await delay(10000); 
             let cleanedNumber = phoneNumber.replace(/[^0-9]/g, '');
-            
             if (!sock.authState.creds.registered) {
                 const code = await sock.requestPairingCode(cleanedNumber);
-                clearTimeout(timeout);
                 resolve(code);
-            } else {
-                clearTimeout(timeout);
-                reject(new Error("Tayari namba hii imeshaunganishwa!"));
             }
         } catch (error) {
-            clearTimeout(timeout);
             reject(error);
         }
     });
