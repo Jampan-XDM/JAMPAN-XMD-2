@@ -9,11 +9,10 @@ const pino = require("pino");
 const fs = require("fs-extra");
 
 async function startPairing(number) {
-    // 1. Kusafisha namba
     const cleanedNumber = number.replace(/[^0-9]/g, '');
-    const sessionPath = `./sessions/${cleanedNumber}`;
+    // Muhimu: Tunatumia folder lile lile la main_session ili bot iwake hapo hapo
+    const sessionPath = `./sessions/main_session`;
 
-    // Futa session ya zamani kuzuia conflict
     if (fs.existsSync(sessionPath)) {
         await fs.remove(sessionPath);
     }
@@ -28,44 +27,41 @@ async function startPairing(number) {
         },
         printQRInTerminal: false,
         logger: pino({ level: "fatal" }),
-        // Identity thabiti ya Ubuntu Chrome kuzuia "Invalid Code"
-        browser: ["Ubuntu", "Chrome", "20.0.04"]
+        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        // Heartbeat kuzuia socket kufa Heroku
+        keepAliveIntervalMs: 30000 
     });
 
     return new Promise(async (resolve, reject) => {
-        // Hifadhi creds kila zinapobadilika
         sock.ev.on('creds.update', saveCreds);
 
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
             
             if (connection === 'open') {
-                console.log(`✅ JAMPAN-XMD Linked to ${cleanedNumber}`);
+                console.log(`✅ JAMPAN-XMD IMESHAUNGANISHWA KIKAMILIFU!`);
+                // Hapa session imeshakamilika
             }
 
             if (connection === 'close') {
                 const reason = lastDisconnect?.error?.output?.statusCode;
                 if (reason !== DisconnectReason.loggedOut) {
-                    // Usijaribu kureconnect hapa wakati wa pairing kuzuia loop
-                    console.log("Pairing socket closed.");
+                    console.log("♻️ Connection lost during pairing, keeping socket alive...");
                 }
             }
         });
 
-        // --- PRODUCTION TIMING LOGIC ---
-        // Subiri sekunde 10 ili socket iji-register kikamilifu kwa WhatsApp
+        // Subiri sekunde 10 socket iwe imara
         await delay(10000); 
 
         try {
             if (!sock.authState.creds.registered) {
                 const code = await sock.requestPairingCode(cleanedNumber);
-                console.log(`🔑 Pairing Code generated: ${code}`);
+                console.log(`🔑 KODI YAKO: ${code}`);
                 resolve(code);
-            } else {
-                resolve("ALREADY_LOGGED_IN");
             }
         } catch (err) {
-            console.error("❌ Pairing Request Failed:", err);
+            console.error("❌ Pairing Error:", err);
             reject(err);
         }
     });
