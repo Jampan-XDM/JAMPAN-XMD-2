@@ -991,9 +991,16 @@ case 'getpp':
             default:
                 break;
         }
+    // --- MWISHO WA SWITCH CASE ---
+            default:
+                break;
+        } // Hili linafunga switch(command)
+
     } catch (err) {
+        // Hii inakamata makosa yoyote yatakayotokea ndani ya handleCommands
         console.error("❌ Error in command.js:", err);
     }
-};
+}; // Hili linafunga async (sock, m, settings)
 
+// HII NI MUHIMU: Inaruhusu index.js kuiona function hii
 module.exports = { handleCommands };
