@@ -11,8 +11,20 @@ const express = require("express");
 const path = require("path");
 const fs = require("fs-extra");
 
-// Import commands hapa juu badala ya ndani ya loop ili iwe faster na kuzuia errors
-const { handleCommands } = require('./commands'); 
+                // --- SULUHISHO LA LINE 15 ---
+                // Badala ya require ya juu, tunaiweka hapa ndani ya 'try-catch'
+                try {
+                    const { handleCommands } = require('./commands'); 
+                    await handleCommands(sock, m, settings);
+                } catch (cmdError) {
+                    // Kama commands.js ina error, bot haitacrash, itaandika error hapa tu
+                    console.log("❌ Shida kwenye commands.js:", cmdError.message);
+                }
+
+            } catch (e) { 
+                console.log("Error ya jumla:", e); 
+            }
+        });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
