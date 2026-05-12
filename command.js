@@ -1,11 +1,10 @@
 // command.js - Ubongo wa JAMPAN-XMD
 // Created by Kelvin Jampan
 
-// --- GLOBAL VARIABLES (Hizi zisifutwe) ---
 let currentPrefix = "."; 
 let uniqueUsers = new Set(); 
 
-const replyWithStyle = async (sock, jid, text, quoted) => {
+const replyWithStyle = async (sock, jid, text, m) => {
     // 1. Tuma Meseji ya Text yenye Forwarded Look
     await sock.sendMessage(jid, { 
         text: text,
@@ -25,7 +24,7 @@ const replyWithStyle = async (sock, jid, text, quoted) => {
                 mediaType: 1
             }
         }
-    }, { quoted: quoted });
+    }, { quoted: m });
 
     // 2. Tuma Audio Automatic (Theme Song)
     await sock.sendMessage(jid, {
@@ -40,33 +39,52 @@ const replyWithStyle = async (sock, jid, text, quoted) => {
                 newsletterJid: "120363409292513352@newsletter",
             }
         }
-    }, { quoted: quoted });
+    }, { quoted: m });
 };
 
-const handleCommands = async (sock, m) => {
+// MUHIMU: Ongeza 'settings' hapa kwenye mabano
+const handleCommands = async (sock, m, settings) => {
     try {
         const remoteJid = m.key.remoteJid;
-        const body = (Object.keys(m.message)[0] === 'conversation') ? m.message.conversation : 
-                     (Object.keys(m.message)[0] === 'extendedTextMessage') ? m.message.extendedTextMessage.text : 
-                     (Object.keys(m.message)[0] === 'imageMessage') ? m.message.imageMessage.caption : '';
+        const pushName = m.pushName || "Mtumiaji";
+        const isOwner = remoteJid.includes(settings.ownerNumber) || m.key.fromMe;
         
-        // Prefix sasa inategemea ulichoset
+        const messageType = Object.keys(m.message)[0];
+        const body = (messageType === 'conversation') ? m.message.conversation : 
+                     (messageType === 'extendedTextMessage') ? m.message.extendedTextMessage.text : 
+                     (messageType === 'imageMessage') ? m.message.imageMessage.caption : '';
+
         const prefix = currentPrefix; 
 
-        // Hesabu watumiaji (Max 100 plan)
         if (!m.key.fromMe) {
-            uniqueUsers.add(m.key.remoteJid);
+            uniqueUsers.add(remoteJid);
         }
 
         if (!body.startsWith(prefix)) return;
-        
+
         const command = body.slice(prefix.length).trim().split(' ')[0].toLowerCase();
-        
+        const args = body.trim().split(/ +/).slice(1);
+
+        // --- Dhibiti Private Mode Hapa ---
+        if (settings.mode === 'private' && !isOwner) return;
+
         const react = async (emoji) => {
             await sock.sendMessage(remoteJid, { react: { text: emoji, key: m.key } });
         };
 
         switch (command) {
+                   case 'mode':
+                if (!isOwner) return await react("❌");
+                const newMode = args[0];
+                if (newMode === 'public' || newMode === 'private') {
+                    settings.mode = newMode;
+                    await react("✅");
+                    await replyWithStyle(sock, remoteJid, `✅ Mode imebadilishwa kuwa: *${newMode.toUpperCase()}*`, m);
+                }
+                break;
+
+            // ... Case zingine zinafuata hapa ...
+
             case 'menu': {
     await react("📑");
     
