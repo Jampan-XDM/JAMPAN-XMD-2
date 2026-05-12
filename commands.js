@@ -1,14 +1,14 @@
-const { proto, delay, getContentType } = require('@whiskeysockets/baileys');
+const { proto, getContentType } = require('@whiskeysockets/baileys'); // Nimeondoa delay hapa
 const fs = require('fs');
 const path = require('path');
-const chalk = require('chalk'); // Hakikisha 'chalk' ipo kwenye package.json yako
+const chalk = require('chalk'); 
 const { smsg, getGroupAdmins, formatp, taggz } = require('./lib/myfunc'); 
 const config = require('./config');
 
 // --- UTILITIES / HELPER FUNCTIONS ---
 const prefix = config.PREFIX || '.';
 
-// --- UTILITIES / HELPER FUNCTIONS ---
+// Hii sasa itafanya kazi bila Error kwa sababu ni moja tu
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
 const runtime = (seconds) => {
@@ -25,7 +25,6 @@ const runtime = (seconds) => {
 };
 
 const replyWithStyle = async (sock, jid, text, m) => {
-    // 1. Tuma Meseji ya Text yenye Forwarded Look
     await sock.sendMessage(jid, { 
         text: text,
         contextInfo: {
@@ -46,7 +45,6 @@ const replyWithStyle = async (sock, jid, text, m) => {
         }
     }, { quoted: m });
 
-    // 2. Tuma Audio Automatic (Theme Song)
     await sock.sendMessage(jid, {
         audio: { url: "https://files.catbox.moe/vmc7k3.mp3" },
         mimetype: 'audio/mpeg',
@@ -68,27 +66,23 @@ const handleCommands = async (sock, m, settings) => {
         const pushName = m.pushName || "Mtumiaji";
         const isOwner = remoteJid.includes(settings.ownerNumber) || m.key.fromMe;
         const isGroup = remoteJid.endsWith('@g.us');
-        
+
         const messageType = Object.keys(m.message)[0];
         const body = (messageType === 'conversation') ? m.message.conversation : 
                      (messageType === 'extendedTextMessage') ? m.message.extendedTextMessage.text : 
                      (messageType === 'imageMessage') ? m.message.imageMessage.caption : 
                      (messageType === 'videoMessage') ? m.message.videoMessage.caption : '';
 
-        const prefix = currentPrefix; 
+        // Nimesahihisha currentPrefix kuwa prefix kulingana na config yako hapo juu
+        const currentPrefix = prefix; 
 
-        if (!m.key.fromMe) {
-            uniqueUsers.add(remoteJid);
-        }
+        if (!body.startsWith(currentPrefix)) return;
 
-        if (!body.startsWith(prefix)) return;
-
-        const command = body.slice(prefix.length).trim().split(' ')[0].toLowerCase();
+        const command = body.slice(currentPrefix.length).trim().split(' ')[0].toLowerCase();
         const args = body.trim().split(/ +/).slice(1);
         const quoted = m.message.extendedTextMessage?.contextInfo?.quotedMessage ? m.message.extendedTextMessage.contextInfo : null;
         const mime = (m.message.imageMessage || m.message.videoMessage || m.message.stickerMessage || quoted?.imageMessage || quoted?.videoMessage || quoted?.stickerMessage)?.mimetype || '';
 
-        // Dhibiti Private Mode
         if (settings.mode === 'private' && !isOwner) return;
 
         const react = async (emoji) => {
@@ -96,6 +90,7 @@ const handleCommands = async (sock, m, settings) => {
         };
 
         switch (command) {
+
             // --- SYSTEM COMMANDS ---
             case 'mode':
                 if (!isOwner) return await react("❌");
