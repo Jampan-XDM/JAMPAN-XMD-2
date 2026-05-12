@@ -6,14 +6,26 @@ const {
 } = require("@whiskeysockets/baileys");
 const pino = require("pino");
 const fs = require("fs-extra");
+const express = require("express");
+const path = require("path");
 
-// --- SETTINGS DEFAULT ---
+// --- 1. SETTINGS & OWNER CONFIG ---
 let settings = {
     autoStatusView: true,
     autoTyping: true,
     mode: 'public', // 'public' au 'private'
     ownerNumber: '255674229015' // Namba yako Kelvin
 };
+
+// --- 2. EXPRESS SERVER (Kuzuia Heroku Crash) ---
+const app = express();
+const PORT = process.env.PORT || 3000;
+app.get('/', (req, res) => { res.send("🚀 JAMPAN-XMD IS ONLINE & STABLE"); });
+app.listen(PORT, () => { console.log(`📡 Server bound to port ${PORT}`); });
+
+// --- 3. EMERGENCY CRASH HANDLERS ---
+process.on("uncaughtException", (err) => console.error("❌ Critical Error:", err.message));
+process.on("unhandledRejection", (reason) => console.error("❌ Promise Rejected:", reason));
 
 async function startJampanBot() {
     const { state, saveCreds } = await useMultiFileAuthState('./sessions/main_session');
@@ -27,113 +39,61 @@ async function startJampanBot() {
 
     sock.ev.on('creds.update', saveCreds);
 
+    // --- CONNECTION UPDATE ---
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
         if (connection === 'open') {
-            console.log("✅ JAMPAN-XMD CONNECTED!");
+            console.log("✅ JAMPAN-XMD CONNECTED SUCCESSFULLY!");
             
             const myJid = jidNormalizedUser(sock.user.id);
-            const welcomeMsg = `🚀 *JAMPAN-XMD IMEUNGANISHWA!*\n\n` +
+            const welcomeMsg = `🚀 *JAMPAN-XMD CONNECTED!*\n\n` +
                                `👤 *Owner:* Kelvin Jampan\n` +
-                               `🛠️ *Mode:* ${settings.mode}\n` +
+                               `🛠️ *Mode:* ${settings.mode.toUpperCase()}\n` +
                                `👁️ *Auto Status:* ${settings.autoStatusView ? 'ON' : 'OFF'}\n` +
                                `⌨️ *Auto Typing:* ${settings.autoTyping ? 'ON' : 'OFF'}\n\n` +
-                               `*Bot ipo tayari kutumika!*`;
+                               `_Powered by JAMPAN-Ai_`;
 
             await sock.sendMessage(myJid, { text: welcomeMsg });
 
-            // AUTO JOIN GROUP (Ingiza link ya group lako hapa)
+            // Auto Join Group (Optional)
             try {
-                await sock.groupAcceptInvite("KJH675jhgH76ghj"); // Weka code ya group hapa
-            } catch (e) {
-                console.log("Auto join failed: Group link invalid or full.");
-            }
+                await sock.groupAcceptInvite("KJH675jhgH76ghj"); 
+            } catch (e) { /* console.log("Group link error"); */ }
+        }
+
+        if (connection === 'close') {
+            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (shouldReconnect) startJampanBot();
         }
     });
 
+    // --- MESSAGE UPSERT (The Core) ---
     sock.ev.on('messages.upsert', async (chatUpdate) => {
         try {
             const m = chatUpdate.messages[0];
             if (!m.message) return;
             const from = m.key.remoteJid;
-            const pushName = m.pushName || "Mtumiaji";
-            const isOwner = from.includes(settings.ownerNumber) || m.key.fromMe;
-            
-            const messageType = Object.keys(m.message)[0];
-            const body = (messageType === 'conversation') ? m.message.conversation : 
-                         (messageType === 'extendedTextMessage') ? m.message.extendedTextMessage.text : '';
+            const pushName = m.pushName || "User";
 
-            const prefix = '.';
-            const isCmd = body.startsWith(prefix);
-            const command = isCmd ? body.slice(prefix.length).trim().split(' ')[0].toLowerCase() : '';
-
-            // --- 1. AUTO STATUS VIEW ---
+            // --- A. AUTO FEATURES ---
+            // 1. Auto Status View
             if (from === 'status@broadcast' && settings.autoStatusView) {
                 await sock.readMessages([m.key]);
-                console.log(`👁️ Imeona Status ya: ${pushName}`);
             }
 
-            // --- 2. AUTO TYPING ---
+            // 2. Auto Typing
             if (settings.autoTyping && !m.key.fromMe) {
                 await sock.sendPresenceUpdate('composing', from);
             }
 
-            // --- 3. PUBLIC/PRIVATE MODE CONTROL ---
-            if (settings.mode === 'private' && !isOwner && isCmd) return;
-
-            // --- COMMANDS ---
-            switch (command) {
-                case 'autostatus':
-                    if (!isOwner) return;
-                    const statusOpt = body.split(' ')[1];
-                    settings.autoStatusView = (statusOpt === 'on');
-                    await sock.sendMessage(from, { text: `✅ Auto Status View sasa ipo: ${settings.autoStatusView ? 'ON' : 'OFF'}` });
-                    break;
-
-                case 'autotyping':
-                    if (!isOwner) return;
-                    const typeOpt = body.split(' ')[1];
-                    settings.autoTyping = (typeOpt === 'on');
-                    await sock.sendMessage(from, { text: `✅ Auto Typing sasa ipo: ${settings.autoTyping ? 'ON' : 'OFF'}` });
-                    break;
-
-                case 'mode':
-                    if (!isOwner) return;
-                    const modeOpt = body.split(' ')[1];
-                    if (modeOpt === 'public' || modeOpt === 'private') {
-                        settings.mode = modeOpt;
-                        await sock.sendMessage(from, { text: `✅ Bot Mode imebadilishwa kuwa: ${settings.mode.toUpperCase()}` });
-                    }
-                    break;
-
-                case 'hi':
-                case 'hello':
-                    await sock.sendMessage(from, { text: `Habari *${pushName}*! Mimi ni JAMPAN-XMD, namba yako ni ${from.split('@')[0]}. Owner wangu ni Kelvin Jampan.` });
-                    break;
-            }
+            // --- B. EXTERNAL COMMAND HANDLER (Unganisha na command.js) ---
+            const { handleCommands } = require('./commands'); 
+            await handleCommands(sock, m, settings);
 
         } catch (err) {
-            console.log(err);
+            console.error("❌ Error in index processing:", err);
         }
     });
 }
 
 startJampanBot();
-// ... (Kodi zako za juu za connection zibaki vile vile)
-
-sock.ev.on('messages.upsert', async (chatUpdate) => {
-    try {
-        const m = chatUpdate.messages[0];
-        if (!m.message) return;
-
-        // TUNALIPAKUA FILE LA COMMANDS HAPA
-        const plugin = require('./commands'); 
-        
-        // Tunazituma data zote muhimu kwenda kwenye commands.js
-        await plugin.handleCommand(sock, m, settings);
-
-    } catch (err) {
-        // Kama kuna error kwenye commands.js, isizime bot nzima
-        console.error("Error in commands.js:", err);
-    }
-});
