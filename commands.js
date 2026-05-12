@@ -1435,7 +1435,7 @@ break;
             // --- DEFAULT LOGIC ---
             default:
                 if (body.startsWith(prefix) && command) {
-                    // Unaweza kuacha empty au kuweka 'Command not found'
+                    // Unaweza kuacha empty
                 }
                 break;
         }
