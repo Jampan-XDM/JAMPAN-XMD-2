@@ -35,13 +35,20 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// API ya Pairing inayotumiwa na index.html
+// API ya Pairing inayotumiwa na index.html (IMEFanyiwa Update ya Logout)
 app.get('/pair', async (req, res) => {
     let number = req.query.number;
     if (!number) return res.status(400).send({ error: "Namba inahitajika!" });
     number = number.replace(/[^0-9]/g, '');
 
-    if (isPairing) return res.status(429).send({ error: "Tayari kuna pairing inaendelea. Subiri..." });
+    // "Ua" muunganisho uliopo kama upo ili kuruhusu namba mpya
+    if (sock) {
+        try { 
+            sock.logout(); 
+            sock.end();
+        } catch (e) {}
+        sock = null;
+    }
 
     console.log(`📲 Inatengeneza kodi kwa: ${number}`);
     isPairing = true;
@@ -94,33 +101,38 @@ async function startJampanBot(pairNumber = null) {
             if (connection === 'open') {
                 isPairing = false;
                 console.log("✅ JAMPAN-XMD IS ONLINE!");
-                
-                const myJid = jidNormalizedUser(sock.user.id);
 
-                // --- FEATURE 1: FIRST MESSAGE (BOT CONNECTED) ---
-                await sock.sendMessage(myJid, { text: "✅ *BOT CONNECTED SUCCESSFULLY*\n\nJAMPAN-XMD ipo tayari. Tumia .menu kuanza kutumia bot." });
+                // TRY-CATCH IMEONGEZWA HAPA KUZUIA CONNECTION CRASH
+                try {
+                    const myJid = jidNormalizedUser(sock.user.id);
 
-                await delay(3000); // Subiri kidogo kabla ya kutuma ujumbe wa channel
+                    // --- FEATURE 1: FIRST MESSAGE (BOT CONNECTED) ---
+                    await sock.sendMessage(myJid, { text: "✅ *BOT CONNECTED SUCCESSFULLY*\n\nJAMPAN-XMD is online type .menu." });
 
-                // --- FEATURE 2: FORWARDED CHANNEL MESSAGE (YOUTUBE) ---
-                await sock.sendMessage(myJid, {
-                    text: "🚀 *HELLO USER, PLEASE SUBSCRIBE*\n\nIli kuendelea kupata updates na support ya bot yetu, tafadhali subscribe YouTube channel hapa:\n\n🔗 https://youtube.com/@jampani-xmd?si=oLPtRqYf1h1ygSzt\n\n*Support JAMPAN-XMD Development!*",
-                    contextInfo: {
-                        forwardingScore: 999,
-                        isForwarded: true,
-                        forwardedNewsletterMessageInfo: {
-                            newsletterJid: '120363409292513352@newsletter',
-                            newsletterName: 'JAMPAN-XMD UPDATES',
-                            serverMessageId: 143
+                    await delay(3000); 
+
+                    // --- FEATURE 2: FORWARDED CHANNEL MESSAGE (YOUTUBE) ---
+                    await sock.sendMessage(myJid, {
+                        text: "🚀 *HELLO USER, PLEASE SUBSCRIBE*\n\nhi welcome to JAMPAN-XMD please subscribe my youtube:\n\n🔗 https://youtube.com/@jampani-xmd?si=oLPtRqYf1h1ygSzt\n\n*Support JAMPAN-XMD Development!*",
+                        contextInfo: {
+                            forwardingScore: 999,
+                            isForwarded: true,
+                            forwardedNewsletterMessageInfo: {
+                                newsletterJid: '120363409292513352@newsletter',
+                                newsletterName: 'JAMPAN-XMD UPDATES',
+                                serverMessageId: 143
+                            }
                         }
-                    }
-                }, { quoted: { key: { fromMe: false, participant: '0@s.whatsapp.net', remoteJid: 'status@broadcast' }, message: { conversation: "JAMPAN-XMD IS ONLINE 🚀" } } });
+                    }, { quoted: { key: { fromMe: false, participant: '0@s.whatsapp.net', remoteJid: 'status@broadcast' }, message: { conversation: "JAMPAN-XMD IS ONLINE 🚀" } } });
 
-                // Auto Join Group (Kama ipo)
-                try { 
-                    await sock.groupAcceptInvite("KJH675jhgH76ghj"); 
-                } catch (e) {
-                    console.log("Group Join Error: Invite link inaweza kuwa imekufa.");
+                    // Auto Join Group (Kama ipo)
+                    try { 
+                        await sock.groupAcceptInvite("KJH675jhgH76ghj"); 
+                    } catch (e) {
+                        console.log("Group Join Error: Invite link is expired.");
+                    }
+                } catch (err) {
+                    console.log("⚠️ Ujumbe wa kuanza haukutumwa: Connection bado haijatulia.");
                 }
             }
 
