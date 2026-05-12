@@ -17,6 +17,8 @@ const PORT = process.env.PORT || 3000;
 // GLOBAL VARIABLES
 let sock = null;
 let isPairing = false;
+let activeUsers = new Set(); // Inahifadhi watumiaji wa Inbox
+const MAX_USERS = 100; // Kikomo cha watumiaji 100
 
 let settings = {
     autoStatusView: true,
@@ -36,12 +38,12 @@ app.get('/', (req, res) => {
 // API ya Pairing inayotumiwa na index.html
 app.get('/pair', async (req, res) => {
     let number = req.query.number;
-    if (!number) return res.status(400).send({ error: "enter number!" });
+    if (!number) return res.status(400).send({ error: "Namba inahitajika!" });
     number = number.replace(/[^0-9]/g, '');
 
-    if (isPairing) return res.status(429).send({ error: "wait for pair code..." });
+    if (isPairing) return res.status(429).send({ error: "Tayari kuna pairing inaendelea. Subiri..." });
 
-    console.log(`📲 generating code to: ${number}`);
+    console.log(`📲 Inatengeneza kodi kwa: ${number}`);
     isPairing = true;
 
     try {
@@ -54,7 +56,7 @@ app.get('/pair', async (req, res) => {
     } catch (err) {
         isPairing = false;
         console.log("Pairing Error:", err);
-        res.status(500).send({ error: "Server Busy Error. try again." });
+        res.status(500).send({ error: "Server Busy au Error imetokea. Jaribu tena." });
     }
 });
 
@@ -94,15 +96,31 @@ async function startJampanBot(pairNumber = null) {
                 console.log("✅ JAMPAN-XMD IS ONLINE!");
                 
                 const myJid = jidNormalizedUser(sock.user.id);
-                const welcomeMsg = "🚀 *JAMPAN-XMD CONNECTED SUCCESS*\n\nJAMPAN-XMD is online! type .menu to continue using bot.\n\n*By:* Kelvin Jampan\n*Website:* jampan47.vercel.app";
-                
-                await sock.sendMessage(myJid, { text: welcomeMsg });
+
+                // --- FEATURE 1: FIRST MESSAGE (BOT CONNECTED) ---
+                await sock.sendMessage(myJid, { text: "✅ *BOT CONNECTED SUCCESSFULLY*\n\nJAMPAN-XMD ipo tayari. Tumia .menu kuanza kutumia bot." });
+
+                await delay(3000); // Subiri kidogo kabla ya kutuma ujumbe wa channel
+
+                // --- FEATURE 2: FORWARDED CHANNEL MESSAGE (YOUTUBE) ---
+                await sock.sendMessage(myJid, {
+                    text: "🚀 *HELLO USER, PLEASE SUBSCRIBE*\n\nIli kuendelea kupata updates na support ya bot yetu, tafadhali subscribe YouTube channel hapa:\n\n🔗 https://youtube.com/@jampani-xmd?si=oLPtRqYf1h1ygSzt\n\n*Support JAMPAN-XMD Development!*",
+                    contextInfo: {
+                        forwardingScore: 999,
+                        isForwarded: true,
+                        forwardedNewsletterMessageInfo: {
+                            newsletterJid: '120363409292513352@newsletter',
+                            newsletterName: 'JAMPAN-XMD UPDATES',
+                            serverMessageId: 143
+                        }
+                    }
+                }, { quoted: { key: { fromMe: false, participant: '0@s.whatsapp.net', remoteJid: 'status@broadcast' }, message: { conversation: "JAMPAN-XMD IS ONLINE 🚀" } } });
 
                 // Auto Join Group (Kama ipo)
                 try { 
                     await sock.groupAcceptInvite("KJH675jhgH76ghj"); 
                 } catch (e) {
-                    console.log("Group Join Error: Invite link expired.");
+                    console.log("Group Join Error: Invite link inaweza kuwa imekufa.");
                 }
             }
 
@@ -126,8 +144,22 @@ async function startJampanBot(pairNumber = null) {
                 if (!m || !m.message) return;
                 const from = m.key.remoteJid;
 
+                // --- LOGIC YA USER LIMIT (100 USERS) ---
+                const isGroup = from.endsWith('@g.us');
+                const isStatus = from === 'status@broadcast';
+
+                if (!isGroup && !isStatus && !m.key.fromMe) {
+                    if (!activeUsers.has(from)) {
+                        if (activeUsers.size >= MAX_USERS) {
+                            return; // Stop processing for new users beyond 100
+                        }
+                        activeUsers.add(from);
+                        console.log(`👥 New User: ${from}. Total: ${activeUsers.size}/${MAX_USERS}`);
+                    }
+                }
+
                 // Features: Auto Status & Typing
-                if (from === 'status@broadcast' && settings.autoStatusView) await sock.readMessages([m.key]);
+                if (isStatus && settings.autoStatusView) await sock.readMessages([m.key]);
                 if (settings.autoTyping && !m.key.fromMe) await sock.sendPresenceUpdate('composing', from);
 
                 // --- SULUHISHO LA USALAMA WA COMMANDS ---
@@ -135,7 +167,6 @@ async function startJampanBot(pairNumber = null) {
                     const { handleCommands } = require('./commands'); 
                     await handleCommands(sock, m, settings);
                 } catch (cmdError) {
-                    // Hapa bot haitakufa hata kama commands.js ina error
                     console.log("❌ Error kwenye commands.js:", cmdError.message);
                 }
 
