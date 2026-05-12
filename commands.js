@@ -1,12 +1,12 @@
-// command.js - Ubongo wa JAMPAN-XMD
-// Created by Kelvin Jampan
-
+const { proto, delay, getContentType } = require('@whiskeysockets/baileys');
 const fs = require('fs');
-const axios = require('axios');
-const fetch = require('node-fetch');
+const path = require('path');
+const chalk = require('chalk'); // Hakikisha 'chalk' ipo kwenye package.json yako
+const { smsg, getGroupAdmins, formatp, taggz } = require('./lib/myfunc'); 
+const config = require('./config');
 
-let currentPrefix = "."; 
-let uniqueUsers = new Set(); 
+// --- UTILITIES / HELPER FUNCTIONS ---
+const prefix = config.PREFIX || '.';
 
 // --- UTILITIES / HELPER FUNCTIONS ---
 const delay = ms => new Promise(res => setTimeout(res, ms));
