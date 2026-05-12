@@ -7,7 +7,7 @@ const fs = require("fs-extra");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// --- 1. SETTINGS ---
+// --- DEFAULT SETTINGS (Kelvin's Config) ---
 let settings = {
     autoStatusView: true,
     autoTyping: true,
@@ -15,12 +15,9 @@ let settings = {
     ownerNumber: '255674229015'
 };
 
-// --- 2. EXPRESS SERVER & PAIRING ROUTES ---
+// --- EXPRESS SETUP ---
 app.use(express.static(path.join(__dirname, '.')));
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 app.get('/pair', async (req, res) => {
     const number = req.query.number;
@@ -30,67 +27,84 @@ app.get('/pair', async (req, res) => {
         const code = await startPairing(number);
         res.status(200).send({ code: code });
     } catch (err) {
-        res.status(500).send({ error: "Jaribu tena baada ya dakika 1." });
+        res.status(500).send({ error: "Jaribu tena baada ya sekunde 30." });
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`📡 JAMPAN-XMD Engine Live on Port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`📡 JAMPAN-XMD Engine Live on Port ${PORT}`));
 
-// --- 3. BOT ENGINE (MAIN LOGIC) ---
+// --- BOT ENGINE ---
 async function startJampanBot() {
-    // Tunatumia 'main_session' kwa ajili ya bot yenyewe baada ya ku-link
     const { state, saveCreds } = await useMultiFileAuthState('./sessions/main_session');
 
     const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: true, // Itatokea pia kwenye logs kama backup
         logger: pino({ level: "fatal" }),
-        browser: ["Ubuntu", "Chrome", "20.0.04"]
+        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        syncFullHistory: false
     });
 
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
-        if (connection === 'open') {
-            console.log("✅ JAMPAN-XMD IS FULLY CONNECTED!");
-            const myJid = jidNormalizedUser(sock.user.id);
-            await sock.sendMessage(myJid, { text: "🚀 *JAMPAN-XMD IS ONLINE!*\nBot sasa imekamilika na imeunganishwa na command.js" });
-        }
         
+        if (connection === 'open') {
+            console.log("✅ BOT IPO ONLINE!");
+            const myJid = jidNormalizedUser(sock.user.id);
+
+            // 1. WELCOME MESSAGE (English/Swahili Mix)
+            const welcomeMsg = `🚀 *JAMPAN-XMD CONNECTED SUCCESSFULLY*\n\n` +
+                               `👤 *Owner:* Kelvin Jampan\n` +
+                               `🛠️ *Mode:* ${settings.mode.toUpperCase()}\n` +
+                               `👁️ *Auto Status:* ${settings.autoStatusView ? 'ON' : 'OFF'}\n` +
+                               `⌨️ *Auto Typing:* ${settings.autoTyping ? 'ON' : 'OFF'}\n\n` +
+                               `_Enjoy using Jampan Bot system!_`;
+            
+            await sock.sendMessage(myJid, { text: welcomeMsg });
+
+            // 2. AUTO JOIN GROUP
+            try {
+                await sock.groupAcceptInvite("KJH675jhgH76ghj"); 
+            } catch (e) { console.log("Auto join failed"); }
+        }
+
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) startJampanBot();
+            if (shouldReconnect) {
+                console.log("♻️ Reconnecting JAMPAN-XMD...");
+                startJampanBot();
+            }
         }
     });
 
-    // --- HAPA NDIPO TUNAPOUNGANISHA COMMAND.JS ---
     sock.ev.on('messages.upsert', async (chatUpdate) => {
         try {
             const m = chatUpdate.messages[0];
             if (!m.message) return;
             const from = m.key.remoteJid;
+            const isOwner = from.includes(settings.ownerNumber) || m.key.fromMe;
 
-            // Features za haraka (Auto Status & Typing)
+            // --- DEFAULTS LOGIC ---
             if (from === 'status@broadcast' && settings.autoStatusView) {
                 await sock.readMessages([m.key]);
             }
             if (settings.autoTyping && !m.key.fromMe) {
                 await sock.sendPresenceUpdate('composing', from);
             }
+            if (settings.mode === 'private' && !isOwner) return;
 
-            // KUITOFAUTISHA COMMAND.JS
-            // Hakikisha jina la file ni 'commands.js' na function ni 'handleCommands'
+            // --- COMMAND HANDLER ---
             const { handleCommands } = require('./commands');
             await handleCommands(sock, m, settings);
 
         } catch (err) {
-            console.error("❌ Error in Messages Logic:", err);
+            console.error(err);
         }
     });
 }
 
-// Washa bot
-startJampanBot();
+// Jaribu kuwasha bot kama kuna session
+if (fs.existsSync('./sessions/main_session/creds.json')) {
+    startJampanBot();
+}
