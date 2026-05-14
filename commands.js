@@ -16,7 +16,7 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // ================================
 setInterval(async () => {
     try {
-        await axios.get('https://jampan-5d4e46bde7ae.herokuapp.com/');
+        await axios.get('https://Japan5d4e46bde7ae.herokuapp.com/');
         console.log('📡 JAMPAN-XMD: Keep-alive success');
     } catch (err) {
         console.log('Keep-alive failed:', err.message);
@@ -430,17 +430,6 @@ case 'use': {
             }
             break;
 
-            // ================================
-            // DEFAULT
-            // ================================
-            default:
-                break;
-        }
-
-// ================================
-// SWITCH COMMANDS
-// ================================
-switch (command) {
 
     // ================================
     // ENHANCE IMAGE
@@ -680,38 +669,6 @@ switch (command) {
     }
     break;
 
-    // ================================
-    // SET PREFIX
-    // ================================
-    case 'setprefix': {
-
-        if (!isOwner) {
-            return await react('❌');
-        }
-
-        const newPrefix = args[0];
-
-        if (!newPrefix) {
-            return await replyWithStyle(
-                sock,
-                remoteJid,
-                `❌ Example: ${prefix}setprefix #`,
-                m
-            );
-        }
-
-        settings.PREFIX = newPrefix;
-
-        await react('✅');
-
-        await replyWithStyle(
-            sock,
-            remoteJid,
-            `✅ Prefix changed to: ${newPrefix}`,
-            m
-        );
-    }
-    break;
 
     // ================================
     // AI CHAT
@@ -2312,96 +2269,6 @@ ${randomFact}
 }
 break;
 
-// ================================
-// STICKER COMMAND
-// ================================
-case 'sticker':
-case 's': {
-    try {
-
-        await react('✨');
-
-        const {
-            Sticker,
-            StickerTypes
-        } = require('wa-sticker-formatter');
-
-        const quotedMsg =
-            m.message?.extendedTextMessage
-            ?.contextInfo?.quotedMessage;
-
-        const isImage =
-            messageType === 'imageMessage' ||
-            quotedMsg?.imageMessage;
-
-        const isVideo =
-            messageType === 'videoMessage' ||
-            quotedMsg?.videoMessage;
-
-        if (!isImage && !isVideo) {
-
-            return await replyWithStyle(
-                sock,
-                remoteJid,
-                '❌ Reply to image or video.',
-                m
-            );
-        }
-
-        const mediaMessage =
-            quotedMsg?.imageMessage ||
-            quotedMsg?.videoMessage ||
-            m.message.imageMessage ||
-            m.message.videoMessage;
-
-        const mediaPath =
-            await sock.downloadAndSaveMediaMessage(
-                mediaMessage
-            );
-
-        const sticker = new Sticker(
-            mediaPath,
-            {
-                pack: 'JAMPAN-XMD',
-                author: 'Kelvin Jampan',
-                type: args.includes('-c')
-                    ? StickerTypes.CROPPED
-                    : StickerTypes.FULL,
-                quality: 70
-            }
-        );
-
-        await sock.sendMessage(
-            remoteJid,
-            {
-                sticker: await sticker.toBuffer(),
-                contextInfo: {
-                    forwardingScore: 999,
-                    isForwarded: true
-                }
-            },
-            { quoted: m }
-        );
-
-        if (fs.existsSync(mediaPath)) {
-            fs.unlinkSync(mediaPath);
-        }
-
-    } catch (err) {
-
-        console.log(err);
-
-        await replyWithStyle(
-            sock,
-            remoteJid,
-            '❌ Failed to create sticker.',
-            m
-        );
-    }
-}
-break;
-
-// ================================
 // TAKE / STEAL STICKER
 // ================================
 case 'take':
@@ -2811,56 +2678,6 @@ break;
                 m
             );
         }
-
-        break;
-    }
-
-====
-    // STICKER
-    // ==========================================
-
-    case "sticker":
-    case "s": {
-        await react("✨");
-
-        const { Sticker, StickerTypes } = require('wa-sticker-formatter');
-
-        const quotedMsg =
-            m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-
-        const mediaMessage =
-            quotedMsg?.imageMessage ||
-            quotedMsg?.videoMessage ||
-            m.message?.imageMessage ||
-            m.message?.videoMessage;
-
-        if (!mediaMessage) {
-            return await replyWithStyle(
-                sock,
-                remoteJid,
-                "❌ Reply to image/video!",
-                m
-            );
-        }
-
-        const media = await sock.downloadMediaMessage(
-            quotedMsg ? { message: quotedMsg } : m
-        );
-
-        const sticker = new Sticker(media, {
-            pack: "JAMPAN-XMD",
-            author: "Kelvin Jampan",
-            type: StickerTypes.FULL,
-            quality: 70
-        });
-
-        await sock.sendMessage(
-            remoteJid,
-            {
-                sticker: await sticker.toBuffer()
-            },
-            { quoted: m }
-        );
 
         break;
     }
