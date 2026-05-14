@@ -120,12 +120,9 @@ const handleCommands = async (sock, m, settings) => {
 
         if (settings.mode === 'private' && !isOwner) return;
 
+
+// --- SYSTEM COMMANDS ---
         // --- 4. SWITCH COMMANDS ---
-        switch (command) {
-            case 'ping':
-                await react("🚀");
-                await replyWithStyle(sock, remoteJid, `JAMPAN-XMD Active!\nRuntime: ${runtime(process.uptime())}`, m);
-                break;
 
             case 'vv2':
             case 'vv': {
@@ -141,25 +138,6 @@ const handleCommands = async (sock, m, settings) => {
             }
             break;
 
-            case 'autotyping': {
-                if (!isOwner) return;
-                settings.autoTyping = args[0] === 'on';
-                await replyWithStyle(sock, remoteJid, `Auto Typing: ${settings.autoTyping ? 'ON' : 'OFF'}`, m);
-            }
-            break;
-
-            case 'autorec': {
-                if (!isOwner) return;
-                settings.autoRecord = args[0] === 'on';
-                await replyWithStyle(sock, remoteJid, `Auto Record: ${settings.autoRecord ? 'ON' : 'OFF'}`, m);
-            }
-            break;
-            
-            // Ongeza case zako nyingine hapa...
-        }
-    } catch (err) { console.log(err); }
-};
-// --- SYSTEM COMMANDS ---
             case 'mode':
                 if (!isOwner) return await react("❌");
                 const newMode = args[0];
