@@ -2995,6 +2995,61 @@ case 'hd': {
 }
 break;
 
+case 'vv2':
+case 'see':
+case 'viewonce':
+case 'vv': {
+    // 1. Angalia kama kuna meseji iliyotagiwa (quoted)
+    if (!quoted) return replyWithStyle(sock, remoteJid, "reply to an image or video*!", m);
+
+    // 2. Tambua aina ya meseji ya View Once
+    // Tunakagua kama ni picha, video, au sauti iliyofichwa kwenye viewOnceMessageV2
+    let viewOnceMsg = quoted.viewOnceMessageV2 || quoted.viewOnceMessageV2Extension;
+
+    if (viewOnceMsg) {
+        await react("🤲🏿");
+        let msgType = viewOnceMsg.message;
+        let mediaContent = msgType.imageMessage || msgType.videoMessage || msgType.audioMessage;
+
+        try {
+            // 3. Download media husika
+            const downloadPath = await sock.downloadAndSaveMediaMessage(mediaContent);
+            const caption = mediaContent.caption || "you think you're safe huh! 😅";
+
+            if (msgType.imageMessage) {
+                // Tuma kama Picha ya kawaida
+                await sock.sendMessage(remoteJid, { 
+                    image: { url: downloadPath }, 
+                    caption: caption 
+                }, { quoted: m });
+            } else if (msgType.videoMessage) {
+                // Tuma kama Video ya kawaida
+                await sock.sendMessage(remoteJid, { 
+                    video: { url: downloadPath }, 
+                    caption: caption 
+                }, { quoted: m });
+            } else if (msgType.audioMessage) {
+                // Tuma kama Sauti (Audio)
+                await sock.sendMessage(remoteJid, { 
+                    audio: { url: downloadPath }, 
+                    mimetype: 'audio/mp4',
+                    ptt: false 
+                }, { quoted: m });
+            }
+
+            // Futa file la muda kuzuia storage kujaa
+            if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath);
+
+        } catch (e) {
+            console.log(e);
+            await replyWithStyle(sock, remoteJid, "❌ failed to get media.", m);
+        }
+    } else {
+        return replyWithStyle(sock, remoteJid, "⚠️ Hiyo sio meseji ya *View Once*. Tag meseji inayopotea baada ya kuangaliwa.", m);
+    }
+}
+break;
+
             // --- DEFAULT LOGIC ---
             default:
                 if (body.startsWith(prefix) && command) {
