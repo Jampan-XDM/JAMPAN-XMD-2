@@ -141,16 +141,16 @@ setInterval(() => {
                 if (newMode === 'public' || newMode === 'private') {
                     settings.mode = newMode;
                     await react("✅");
-                    await replyWithStyle(sock, remoteJid, `✅ Mode imebadilishwa kuwa: *${newMode.toUpperCase()}*`, m);
+                    await replyWithStyle(sock, remoteJid, `✅ mode changed to: *${newMode.toUpperCase()}*`, m);
                 }
                 break;
 
             case "setprefix":
                 if (!isOwner) return await react("❌");
                 const newPrefix = args[0];
-                if (!newPrefix) return await replyWithStyle(sock, remoteJid, `❌ *Weka alama!* Mfano: ${prefix}setprefix #`, m);
+                if (!newPrefix) return await replyWithStyle(sock, remoteJid, `❌ *add !* example: ${prefix}setprefix #`, m);
                 currentPrefix = newPrefix;
-                await replyWithStyle(sock, remoteJid, `✅ *PREFIX IMEBADILISHWA!* Mpya: *${currentPrefix}*`, m);
+                await replyWithStyle(sock, remoteJid, `✅ *CHANGED TO!* new: *${currentPrefix}*`, m);
                 break;
 
             case 'menu':
@@ -312,7 +312,7 @@ case 'use': {
             case "chatgpt": {
                 await react("🧠");
                 const text = args.join(" ");
-                if (!text) return replyWithStyle(sock, remoteJid, "❌ Niulize chochote! Mfano: .ai Kelvin Jampan ni nani?", m);
+                if (!text) return replyWithStyle(sock, remoteJid, "❌ I'm here ask me something: .ai who is Kelvin Jampan?", m);
                 
                 try {
                     const response = await axios.post('https://api.openai.com/v1/chat/completions', {
@@ -436,7 +436,7 @@ case 'use': {
 
                 const systemPrompt = `You are JAMPAN-XMD, a friendly smart WhatsApp bot. 
                 Owner: Kelvin Jampan from Dodoma, Tanzania (wa.me/255674229015).
-                Creator details: Kelvin is a developer, 3D animator, and music producer.
+                Creator details: Kelvin is a gamer, developer, and rich student.
                 Website: https://jampanbot.vercel.app
                 Rules: 
                 - Chat naturally like a human. 
@@ -2968,7 +2968,7 @@ case 'hd': {
         if (data.status === 200) {
             await sock.sendMessage(remoteJid, { 
                 image: { url: data.result }, 
-                caption: "✨ *Picha Yako your photo is enhanced by JAMPAN-XMD* ✨\n\nQuality: 4K Ultra HD 🚀" 
+                caption: "✨ * your photo is enhanced by JAMPAN-XMD* ✨\n\nQuality: 4K Ultra HD 🚀" 
             }, { quoted: m });
             await react("✅");
         } else {
@@ -3036,7 +3036,7 @@ case 'vv': {
             await replyWithStyle(sock, remoteJid, "❌ failed to get media.", m);
         }
     } else {
-        return replyWithStyle(sock, remoteJid, "⚠️ Hiyo sio meseji ya *View Once*. Tag meseji inayopotea baada ya kuangaliwa.", m);
+        return replyWithStyle(sock, remoteJid, "⚠️ this is not *View Once*. Tag item bro.", m);
     }
 }
 break;
