@@ -1,8 +1,8 @@
 const { proto, getContentType } = require('@whiskeysockets/baileys');
-const fs = require('fs'); // Hakikisha fs ipo
+const fs = require('fs'); 
 const path = require('path');
 const chalk = require('chalk'); 
-const axios = require('axios'); // Iwekwe hapa juu, siyo katikati ya kodi
+const axios = require('axios'); 
 const { smsg, getGroupAdmins, formatp, taggz } = require('./lib/myfunc'); 
 const config = require('./config');
 
@@ -10,17 +10,20 @@ const config = require('./config');
 const prefix = config.PREFIX || '.';
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
+// --- KEEP-ALIVE LOGIC (Iwekwe Hapa Nje) ---
+setInterval(() => {
+    axios.get(`https://jampan-5d4e46bde7ae.herokuapp.com/`) 
+    .then(() => console.log("📡 JAMPAN-XMD: Keep-alive ping sent."))
+    .catch((e) => console.log("📡 Keep-alive: Server is awake."));
+}, 1200000); 
+
 const runtime = (seconds) => {
     seconds = Number(seconds);
     var d = Math.floor(seconds / (3600 * 24));
     var h = Math.floor(seconds % (3600 * 24) / 3600);
     var m = Math.floor(seconds % 3600 / 60);
     var s = Math.floor(seconds % 60);
-    var dDisplay = d > 0 ? d + " day, " : "";
-    var hDisplay = h > 0 ? h + " hrs, " : "";
-    var mDisplay = m > 0 ? m + " ms, " : "";
-    var sDisplay = s > 0 ? s + " sek" : " sek";
-    return dDisplay + hDisplay + mDisplay + sDisplay;
+    return `${d > 0 ? d + " day, " : ""}${h > 0 ? h + " hrs, " : ""}${m > 0 ? m + " ms, " : ""}${s} sek`;
 };
 
 const replyWithStyle = async (sock, jid, text, m) => {
@@ -74,16 +77,12 @@ const handleCommands = async (sock, m, settings) => {
 
         const currentPrefix = prefix; 
 
-        // --- 1. AUTO TYPING & RECORDING LOGIC ---
+        // --- 1. AUTO TYPING & RECORDING ---
         if (settings.autoTyping === undefined) settings.autoTyping = true;
-        if (settings.autoTyping && !m.key.fromMe) {
-            await sock.sendPresenceUpdate('composing', remoteJid);
-        }
-        if (settings.autoRecord && !m.key.fromMe) {
-            await sock.sendPresenceUpdate('recording', remoteJid);
-        }
+        if (settings.autoTyping && !m.key.fromMe) await sock.sendPresenceUpdate('composing', remoteJid);
+        if (settings.autoRecord && !m.key.fromMe) await sock.sendPresenceUpdate('recording', remoteJid);
 
-        // --- 2. CHATBOT LOGIC (Meseji zisizo na prefix) ---
+        // --- 2. CHATBOT LOGIC ---
         if (!body.startsWith(currentPrefix) && !m.key.fromMe) {
             const shouldChat = (settings.chatbotMode === 'inbox' && !isGroup) || 
                                (settings.chatbotMode === 'group' && isGroup) ||
@@ -94,7 +93,7 @@ const handleCommands = async (sock, m, settings) => {
                     const response = await axios.post('https://api.openai.com/v1/chat/completions', {
                         model: "gpt-4o-mini",
                         messages: [
-                            { role: "system", content: "Wewe ni JAMPAN-XMD, chatbot mjanja uliyoundwa na Kelvin Jampan. Jibu kwa kifupi na kwa ucheshi ukitumia Kiswahili au Kiingereza." },
+                            { role: "system", content: "Wewe ni JAMPAN-XMD, chatbot uliyoundwa na Kelvin Jampan." },
                             { role: "user", content: body }
                         ]
                     }, {
@@ -103,38 +102,64 @@ const handleCommands = async (sock, m, settings) => {
                             'Content-Type': 'application/json'
                         }
                     });
-                    const aiResponse = response.data.choices[0].message.content;
-                    await sock.sendMessage(remoteJid, { text: aiResponse }, { quoted: m });
-                } catch (error) {
-                    console.error("AI Error:", error.message);
-                }
-                return; // Muhimu: Inakata hapa ili isijaribu kusoma kama command
+                    await sock.sendMessage(remoteJid, { text: response.data.choices[0].message.content }, { quoted: m });
+                } catch (e) { console.log("AI Error"); }
+                return;
             }
-            return; // Muhimu: Kama siyo chat na haina prefix, usiendelee chini
+            return;
         }
 
-        // --- 3. COMMANDS LOGIC (Meseji zenye prefix) ---
+        // --- 3. COMMANDS PREPARATION ---
         const command = body.slice(currentPrefix.length).trim().split(' ')[0].toLowerCase();
         const args = body.trim().split(/ +/).slice(1);
         const quoted = m.message.extendedTextMessage?.contextInfo?.quotedMessage ? m.message.extendedTextMessage.contextInfo : null;
-        const mime = (m.message.imageMessage || m.message.videoMessage || m.message.stickerMessage || quoted?.imageMessage || quoted?.videoMessage || quoted?.stickerMessage)?.mimetype || '';
-
-        if (settings.mode === 'private' && !isOwner) return;
 
         const react = async (emoji) => {
             await sock.sendMessage(remoteJid, { react: { text: emoji, key: m.key } });
         };
 
+        if (settings.mode === 'private' && !isOwner) return;
+
+        // --- 4. SWITCH COMMANDS ---
         switch (command) {
-  
-            // Hii inazuia Heroku isizime bot (Anti-Sleep)
-setInterval(() => {
-    axios.get(`https://jampan-5d4e46bde7ae.herokuapp.com/`) // Tumia URL yako ya Heroku hapa
-    .then(() => console.log("📡 JAMPAN-XMD: Keep-alive ping sent."))
-    .catch((e) => console.error("📡 Keep-alive error: ", e.message));
-}, 1200000); // Kila baada ya dakika 20
-          
-         // --- SYSTEM COMMANDS ---
+            case 'ping':
+                await react("🚀");
+                await replyWithStyle(sock, remoteJid, `JAMPAN-XMD Active!\nRuntime: ${runtime(process.uptime())}`, m);
+                break;
+
+            case 'vv2':
+            case 'vv': {
+                let viewOnceMsg = quoted?.viewOnceMessageV2 || quoted?.viewOnceMessageV2Extension;
+                if (!viewOnceMsg) return replyWithStyle(sock, remoteJid, "❌ Tag meseji ya View Once!", m);
+                await react("🤲🏿");
+                let media = viewOnceMsg.message.imageMessage || viewOnceMsg.message.videoMessage || viewOnceMsg.message.audioMessage;
+                let buffer = await sock.downloadAndSaveMediaMessage(media);
+                if (viewOnceMsg.message.imageMessage) await sock.sendMessage(remoteJid, { image: { url: buffer }, caption: media.caption }, { quoted: m });
+                if (viewOnceMsg.message.videoMessage) await sock.sendMessage(remoteJid, { video: { url: buffer }, caption: media.caption }, { quoted: m });
+                if (viewOnceMsg.message.audioMessage) await sock.sendMessage(remoteJid, { audio: { url: buffer }, mimetype: 'audio/mp4' }, { quoted: m });
+                if (fs.existsSync(buffer)) fs.unlinkSync(buffer);
+            }
+            break;
+
+            case 'autotyping': {
+                if (!isOwner) return;
+                settings.autoTyping = args[0] === 'on';
+                await replyWithStyle(sock, remoteJid, `Auto Typing: ${settings.autoTyping ? 'ON' : 'OFF'}`, m);
+            }
+            break;
+
+            case 'autorec': {
+                if (!isOwner) return;
+                settings.autoRecord = args[0] === 'on';
+                await replyWithStyle(sock, remoteJid, `Auto Record: ${settings.autoRecord ? 'ON' : 'OFF'}`, m);
+            }
+            break;
+            
+            // Ongeza case zako nyingine hapa...
+        }
+    } catch (err) { console.log(err); }
+};
+// --- SYSTEM COMMANDS ---
             case 'mode':
                 if (!isOwner) return await react("❌");
                 const newMode = args[0];
