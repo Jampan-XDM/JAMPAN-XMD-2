@@ -1,13 +1,13 @@
-const { proto, getContentType } = require('@whiskeysockets/baileys'); // Nimeondoa delay 0
+const { proto, getContentType } = require('@whiskeysockets/baileys');
+const fs = require('fs'); // Hakikisha fs ipo
 const path = require('path');
 const chalk = require('chalk'); 
+const axios = require('axios'); // Iwekwe hapa juu, siyo katikati ya kodi
 const { smsg, getGroupAdmins, formatp, taggz } = require('./lib/myfunc'); 
 const config = require('./config');
 
 // --- UTILITIES / HELPER FUNCTIONS ---
 const prefix = config.PREFIX || '.';
-
-// Hii sasa itafanya kazi bila Error kwa sababu ni moja tu
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
 const runtime = (seconds) => {
@@ -16,10 +16,10 @@ const runtime = (seconds) => {
     var h = Math.floor(seconds % (3600 * 24) / 3600);
     var m = Math.floor(seconds % 3600 / 60);
     var s = Math.floor(seconds % 60);
-    var dDisplay = d > 0 ? d + (d == 1 ? " day, " : " day, ") : "";
-    var hDisplay = h > 0 ? h + (h == 1 ? " hrs, " : " hrs, ") : "";
-    var mDisplay = m > 0 ? m + (m == 1 ? " ms, " : " ms, ") : "";
-    var sDisplay = s > 0 ? s + (s == 1 ? " sek" : " sek") : "";
+    var dDisplay = d > 0 ? d + " day, " : "";
+    var hDisplay = h > 0 ? h + " hrs, " : "";
+    var mDisplay = m > 0 ? m + " ms, " : "";
+    var sDisplay = s > 0 ? s + " sek" : " sek";
     return dDisplay + hDisplay + mDisplay + sDisplay;
 };
 
@@ -72,11 +72,48 @@ const handleCommands = async (sock, m, settings) => {
                      (messageType === 'imageMessage') ? m.message.imageMessage.caption : 
                      (messageType === 'videoMessage') ? m.message.videoMessage.caption : '';
 
-        // Nimesahihisha currentPrefix kuwa prefix kulingana na config yako hapo juu
         const currentPrefix = prefix; 
 
-        if (!body.startsWith(currentPrefix)) return;
+        // --- 1. AUTO TYPING & RECORDING LOGIC ---
+        if (settings.autoTyping === undefined) settings.autoTyping = true;
+        if (settings.autoTyping && !m.key.fromMe) {
+            await sock.sendPresenceUpdate('composing', remoteJid);
+        }
+        if (settings.autoRecord && !m.key.fromMe) {
+            await sock.sendPresenceUpdate('recording', remoteJid);
+        }
 
+        // --- 2. CHATBOT LOGIC (Meseji zisizo na prefix) ---
+        if (!body.startsWith(currentPrefix) && !m.key.fromMe) {
+            const shouldChat = (settings.chatbotMode === 'inbox' && !isGroup) || 
+                               (settings.chatbotMode === 'group' && isGroup) ||
+                               (settings.chatbotMode === 'all');
+
+            if (shouldChat && body.length > 1) {
+                try {
+                    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+                        model: "gpt-4o-mini",
+                        messages: [
+                            { role: "system", content: "Wewe ni JAMPAN-XMD, chatbot mjanja uliyoundwa na Kelvin Jampan. Jibu kwa kifupi na kwa ucheshi ukitumia Kiswahili au Kiingereza." },
+                            { role: "user", content: body }
+                        ]
+                    }, {
+                        headers: {
+                            'Authorization': `Bearer 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`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    const aiResponse = response.data.choices[0].message.content;
+                    await sock.sendMessage(remoteJid, { text: aiResponse }, { quoted: m });
+                } catch (error) {
+                    console.error("AI Error:", error.message);
+                }
+                return; // Muhimu: Inakata hapa ili isijaribu kusoma kama command
+            }
+            return; // Muhimu: Kama siyo chat na haina prefix, usiendelee chini
+        }
+
+        // --- 3. COMMANDS LOGIC (Meseji zenye prefix) ---
         const command = body.slice(currentPrefix.length).trim().split(' ')[0].toLowerCase();
         const args = body.trim().split(/ +/).slice(1);
         const quoted = m.message.extendedTextMessage?.contextInfo?.quotedMessage ? m.message.extendedTextMessage.contextInfo : null;
@@ -89,61 +126,15 @@ const handleCommands = async (sock, m, settings) => {
         };
 
         switch (command) {
-// 1. Hakikisha umeongeza hii juu kabisa kwenye file lako:
-const axios = require('axios');
-
-// 2. Hii ndiyo Logic ya Chatbot (Iweke ndani ya handleCommands, kabla ya kuangalia prefix):
-
-if (!body.startsWith(currentPrefix) && !m.key.fromMe) {
-    // Angalia kama chatbot imewashwa (inbox au group)
-    const shouldChat = (settings.chatbotMode === 'inbox' && !isGroup) || 
-                       (settings.chatbotMode === 'group' && isGroup);
-
-    if (shouldChat && body.length > 1) {
-        try {
-            // Hii inatuma meseji kwenda OpenAI
-            const response = await axios.post('https://api.openai.com/v1/chat/completions', {
-                model: "gpt-4o-mini",
-                messages: [
-                    { 
-                        role: "system", 
-                        content: "Wewe ni JAMPAN-XMD, chatbot mjanja uliyoundwa na Kelvin Jampan. Jibu kwa kifupi na kwa ucheshi ukitumia Kiswahili au Kiingereza." 
-                    },
-                    { role: "user", content: body }
-                ]
-            }, {
-                headers: {
-                    'Authorization': `Bearer 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`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            const aiResponse = response.data.choices[0].message.content;
-            
-            // Inatuma jibu la AI kwa mtumiaji
-            await sock.sendMessage(remoteJid, { text: aiResponse }, { quoted: m });
-        } catch (error) {
-            console.error("AI Error:", error.message);
-        }
-        return; // Inazuia bot kuendelea chini baada ya kujibu
-    }
-}
-// --- AUTO TYPING & RECORDING LOGIC ---
-// Auto Typing inakuwa ON kwa mara ya kwanza (Default)
-if (settings.autoTyping === undefined) settings.autoTyping = true;
-
-// Inatuma 'typing...' kama imewashwa
-if (settings.autoTyping && !m.key.fromMe) {
-    await sock.sendPresenceUpdate('composing', remoteJid);
-}
-
-// Inatuma 'recording...' kama imewashwa (Default ni OFF mpaka uiwashe)
-if (settings.autoRecord && !m.key.fromMe) {
-    await sock.sendPresenceUpdate('recording', remoteJid);
-}
-
-
-            // --- SYSTEM COMMANDS ---
+  
+            // Hii inazuia Heroku isizime bot (Anti-Sleep)
+setInterval(() => {
+    axios.get(`https://jampan-5d4e46bde7ae.herokuapp.com/`) // Tumia URL yako ya Heroku hapa
+    .then(() => console.log("📡 JAMPAN-XMD: Keep-alive ping sent."))
+    .catch((e) => console.error("📡 Keep-alive error: ", e.message));
+}, 1200000); // Kila baada ya dakika 20
+          
+         // --- SYSTEM COMMANDS ---
             case 'mode':
                 if (!isOwner) return await react("❌");
                 const newMode = args[0];
