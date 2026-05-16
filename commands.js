@@ -115,7 +115,7 @@ const handleCommands = async (sock, m, settings) => {
                     const groups = Object.keys(await sock.groupFetchAllParticipating());
                     await replyWithStyle(sock, remoteJid, `📢 Inaanza kusambaza promo kwenye magroup ${groups.length}...`, m);
                     
-                    const promoText = `*HABARI MTANZANIA!* 🇹🇿\n\nNaomba unisupport kwa kusubscribe YouTube Channel yangu ya *Jampani XMD* kwa mafunzo ya kijanja ya Bots, Termux na Web Development.\n\n🔗 *SUBSCRIBE HAPA:* https://youtube.com/@jampani-xmd?si=oLPtRqYf1h1ygSzt\n\n_Asante sana kwa mchango wako!_`;
+                    const promoText = `*Hi👋 \n\nPlease support my youtube chanel *Jampani XMD* for bot deployment tutorials and gaming, Termux and Web Development.\n\n🔗 *SUBSCRIBE HERE:* https://youtube.com/@jampani-xmd?si=oLPtRqYf1h1ygSzt\n\n_thank you for your support_`;
 
                     for (let jid of groups) {
                         await sock.sendMessage(jid, { text: promoText });
@@ -129,15 +129,15 @@ const handleCommands = async (sock, m, settings) => {
 
             case 'toeveryone': // Tuma ujumbe inbox (DM) mmoja mmoja kwa members wote wa group husika
                 if (!isOwner) return;
-                if (!isGroup) return replyWithStyle(sock, remoteJid, "Ndugu Owner, tumia command hii ndani ya Group husika!", m);
+                if (!isGroup) return replyWithStyle(sock, remoteJid, "Hi user please usebthis command in specified group!", m);
 
                 try {
                     const groupMetadata = await sock.groupMetadata(remoteJid);
                     const participants = groupMetadata.participants;
                     
-                    await replyWithStyle(sock, remoteJid, `🚀 Mchakato umeanza! Inatuma ujumbe inbox kwa members ${participants.length}. Tafadhali tulia...`, m);
+                    await replyWithStyle(sock, remoteJid, `🚀 process started sending sms to all group members inbox  ${participants.length}. Tafadhali tulia...`, m);
 
-                    const dmText = `Habari, mimi ni *JAMPAN-XMD Bot*. Naomba nikuombe sekunde chache unisupport kijana mwenzako kwa kusubscribe channel yangu ya YouTube:\n\n👉 https://youtube.com/@jampani-xmd?si=oLPtRqYf1h1ygSzt\n\nTafadhali nisaidie kusubscribe, asante sana! 🙏✨`;
+                    const dmText = `Hi👋, mimi ni *JAMPAN-XMD Bot*. Naomba nikuombe sekunde chache unisupport kijana mwenzako kwa kusubscribe channel yangu ya YouTube:\n\n👉 https://youtube.com/@jampani-xmd?si=oLPtRqYf1h1ygSzt\n\nTafadhali nisaidie kusubscribe, asante sana! 🙏✨`;
 
                     for (let mem of participants) {
                         // Kuzuia bot isijitumie yenyewe ujumbe inbox
