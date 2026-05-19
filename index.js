@@ -126,50 +126,159 @@ async function startJampanBot(sessionPath, pairNumber = null) {
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
 
+            // ==========================================================
+            // NEW ANONYMOUS CONNECTION OPEN LOGIC (CONFIRMED & INTEGRATED)
+            // ==========================================================
             if (connection === 'open') {
-                console.log(`✅ JAMPAN-XMD ONLINE! Session: [${sessionKey}]`);
+
+                console.log(`
+╭━━━━━━━━━━━━━━━━━━━━⬣
+┃ ⚡ JAMPAN-XMD ONLINE
+┃ ☠️ Anonymous Session Active
+┃ 🚀 Node : ${sessionKey}
+╰━━━━━━━━━━━━━━━━━━━━⬣
+`);
 
                 try {
+
                     const myJid = jidNormalizedUser(sock.user.id);
 
-                    // --- FEATURE 1: FIRST MESSAGE (BOT CONNECTED) ---
-                    await sock.sendMessage(myJid, { text: `✅ *JAMPAN-XMD CONNECTED SUCCESSFULLY*\n\nSession: *${sessionKey}* ipo tayari. Andika .menu` });
+                    // =========================================
+                    // ⚡ ANONYMOUS CONNECT MESSAGE
+                    // =========================================
+                    await sock.sendMessage(myJid, {
+                        text: `
+╭━━〔 ⚡ SYSTEM ONLINE 〕━━⬣
+┃
+┃ ☠️ Anonymous connection established
+┃ 🚀 Multi-device node connected
+┃ 📡 Secure signal detected
+┃
+┃ > Session : ${sessionKey}
+┃ > Status : ACTIVE
+┃
+┃ 🔰 Type .menu to continue
+┃
+╰━━━━━━━━━━━━━━━━━━⬣
+`,
+                        contextInfo: {
+                            forwardingScore: 9999,
+                            isForwarded: true,
+                            forwardedNewsletterMessageInfo: {
+                                newsletterName: 'JAMPAN-XMD SYSTEM',
+                                newsletterJid: '120363409292513352@newsletter',
+                                serverMessageId: 144
+                            },
+                            externalAdReply: {
+                                title: '⚡ JAMPAN-XMD ACTIVE',
+                                body: 'Anonymous Multi Device',
+                                thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
+                                sourceUrl: 'https://jampanbot.vercel.app',
+                                mediaType: 1,
+                                renderLargerThumbnail: true
+                            }
+                        }
+                    });
 
-                    await delay(2000); 
+                    await delay(2000);
 
-                    // --- FEATURE 2: AUTO-FOLLOW UPDATES CHANNEL ---
+                    // =========================================
+                    // ⚡ AUTO FOLLOW CHANNEL
+                    // =========================================
                     try {
+
                         await sock.newsletterFollow('120363409292513352@newsletter');
-                        console.log(`📢 [${sessionKey}] Amefuata chaneli ya updates kiotomatiki!`);
+
+                        console.log(`
+╭━━━━━━━━━━━━━━━━━━━━⬣
+┃ 📢 CHANNEL CONNECTED
+┃ ⚡ Updates enabled
+╰━━━━━━━━━━━━━━━━━━━━⬣
+`);
+
                     } catch (channelErr) {
-                        // Kuzuia crash kama tayari alishafuata au kama ni namba ya mmiliki wa chaneli
-                        console.log(`⚠️ Kushindwa ku-follow chaneli kwa [${sessionKey}]:`, channelErr.message);
+
+                        console.log(`
+╭━━━━━━━━━━━━━━━━━━━━⬣
+┃ ⚠️ CHANNEL BYPASSED
+┃ ${channelErr.message}
+╰━━━━━━━━━━━━━━━━━━━━⬣
+`);
                     }
 
                     await delay(2000);
 
-                    // --- FEATURE 3: FORWARDED CHANNEL MESSAGE (YOUTUBE) ---
+                    // =========================================
+                    // ⚡ YOUTUBE PROMOTION
+                    // =========================================
                     await sock.sendMessage(myJid, {
-                        text: "🚀 *HELLO USER, PLEASE SUBSCRIBE*\n\nhi welcome to JAMPAN-XMD please subscribe my youtube:\n\n🔗 https://youtube.com/@jampani-xmd?si=oLPtRqYf1h1ygSzt\n\n*Support JAMPAN-XMD Development!*",
+                        image: {
+                            url: 'https://files.catbox.moe/fzjhed.png'
+                        },
+                        caption: `
+╭━━〔 🎬 JAMPAN-XMD NODE 〕━━⬣
+┃
+┃ 🚀 Welcome to anonymous system
+┃
+┃ ☠️ Learn:
+┃ • WhatsApp Bots
+┃ • Pair Code Systems
+┃ • Baileys MD
+┃ • Web Development
+┃ • Termux Tricks
+┃
+┃ 📡 Tap below to access
+┃ official YouTube channel
+┃
+╰━━━━━━━━━━━━━━━━━━⬣
+`,
                         contextInfo: {
-                            forwardingScore: 999,
+                            forwardingScore: 9999,
                             isForwarded: true,
-                            forwardedNewsletterMessageInfo: {
-                                newsletterJid: '120363409292513352@newsletter',
-                                newsletterName: 'JAMPAN-XMD UPDATES',
-                                serverMessageId: 143
+                            externalAdReply: {
+                                title: '🎥 JAMPAN XMD OFFICIAL',
+                                body: 'Bots • Coding • Tutorials',
+                                thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
+                                sourceUrl: 'https://youtube.com/@jampani-xmd?si=oLPtRqYf1h1ygSzt',
+                                mediaType: 1,
+                                renderLargerThumbnail: true,
+                                showAdAttribution: true
                             }
                         }
-                    }, { quoted: { key: { fromMe: false, participant: '0@s.whatsapp.net', remoteJid: 'status@broadcast' }, message: { conversation: "JAMPAN-XMD IS ONLINE 🚀" } } });
+                    });
 
-                    // Auto Join Group (Link ikiwa imekufa isivunje kodi)
-                    try { 
-                        await sock.groupAcceptInvite("KJH675jhgH76ghj"); 
+                    // =========================================
+                    // ⚡ AUTO GROUP JOIN
+                    // =========================================
+                    try {
+
+                        await sock.groupAcceptInvite("KJH675jhgH76ghj");
+
+                        console.log(`
+╭━━━━━━━━━━━━━━━━━━━━⬣
+┃ 👥 GROUP CONNECTED
+┃ ⚡ Secure join success
+╰━━━━━━━━━━━━━━━━━━━━⬣
+`);
+
                     } catch (e) {
-                        console.log(`[${sessionKey}] Group Join: Link expired.`);
+
+                        console.log(`
+╭━━━━━━━━━━━━━━━━━━━━⬣
+┃ ⚠️ GROUP JOIN FAILED
+┃ Link expired or invalid
+╰━━━━━━━━━━━━━━━━━━━━⬣
+`);
                     }
+
                 } catch (err) {
-                    console.log(`⚠️ Ujumbe wa kuanza haukutumwa kwenye [${sessionKey}]: Connection haijatulia.`);
+
+                    console.log(`
+╭━━━━━━━━━━━━━━━━━━━━⬣
+┃ ❌ SYSTEM MESSAGE FAILED
+┃ ${err.message}
+╰━━━━━━━━━━━━━━━━━━━━⬣
+`);
                 }
             }
 
