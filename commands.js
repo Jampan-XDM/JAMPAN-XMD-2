@@ -175,114 +175,137 @@ const handleCommands = async (sock, m, settings) => {
             }
             break;
 
-            // ================================
-            // MENU COMMAND
-            // ================================
-            case 'menu':
-            case 'help':
-            case 'use': {
-                await react("📜");
-                const uptime = runtime(process.uptime());
-                const menuText = `━━━━━━━━━━━━━━━━━━━━
-┃  🚀 *JAMPAN-XMD MAIN MENU* 🚀
-━━━━━━━━━━━━━━━━━━━━
-> *The Ultimate WhatsApp Automation Experience*
+// ================================
+// ⚡ PREMIUM ANONYMOUS MENU
+// ================================
+case 'menu':
+case 'help':
+case 'use': {
 
-👤 *Developer:* Kelvin Jampan
-⏱ *Uptime:* ${uptime}
-📡 *Prefix:* [ ${prefix} ]
-📂 *Commands:* 75
-🌐 *Network:* Stable
+    await react('⚡');
 
-━━━━━━━━━━━━━━━━━━━━
-┃ 🛡️ *SYSTEM & ADMIN*
-━━━━━━━━━━━━━━━━━━━━
-> ${prefix}ping — Speed test & Latency
-> ${prefix}runtime — Active online time
-> ${prefix}mode — Toggle Public/Private
-> ${prefix}setprefix — Change command symbol
-> ${prefix}autotyping — Toggle typing simulation
-> ${prefix}autorec — Toggle recording simulation
-> ${prefix}broadcast — Promo all groups
-> ${prefix}toeveryone — Promo group members DM
-> ${prefix}heroku — Deployment status
+    const uptime = runtime(process.uptime());
 
-━━━━━━━━━━━━━━━━━━━━
-┃ 🤖 *AI & KNOWLEDGE*
-━━━━━━━━━━━━━━━━━━━━
-> ${prefix}ai — ChatGPT Smart AI (with Memory)
-> ${prefix}gpt — GPT-4o Brain
-> ${prefix}gemini — Gemini AI Chat
-> ${prefix}chatgpt — AI assistant
-> ${prefix}define — Instant dictionary
-> ${prefix}say — Text-To-Speech (Kiswahili/English)
-> ${prefix}coffee — Random coffee facts
+    const menuText = `
+┏━━━━━━━━━━━━━━━━━━━┓
+┃  ⚡ 𝐉𝐀𝐌𝐏𝐀𝐍-𝐗𝐌𝐃 ⚡
+┗━━━━━━━━━━━━━━━━━━━┛
 
-━━━━━━━━━━━━━━━━━━━━
-┃ 👑 *CREATOR & IDENTITY*
-━━━━━━━━━━━━━━━━━━━━
-> ${prefix}owner — Developer VCard
-> ${prefix}me — Contact developer
-> ${prefix}kelvin — Kelvin Jampan info
-> ${prefix}jampan — Bot identity
-> ${prefix}script — Script details
-> ${prefix}vision — Bot mission
-> ${prefix}support — Support links
-> ${prefix}love — Romantic quote
+> ☠️ Anonymous Multi Device
+> 👑 Developer : Kelvin Jampan
+> 🚀 Status : Active
+> ⏱ Runtime : ${uptime}
+> 📡 Prefix : [ ${prefix} ]
 
-━━━━━━━━━━━━━━━━━━━━
-┃ ⚙️ *GROUP & SECURITY*
-━━━━━━━━━━━━━━━━━━━━
-> ${prefix}tagall — Mention all members
-> ${prefix}link — Get group invite link
-> ${prefix}welcome — Welcome system (on/off)
-> ${prefix}goodbye — Goodbye system (on/off)
-> ${prefix}antipromote — Prevent fake promotes
-> ${prefix}antidemote — Prevent fake demotes
+╭──────────────⬣
+> 🚀 SYSTEM NODE
+╰──────────────⬣
+> ${prefix}alive
+> ${prefix}ping
+> ${prefix}runtime
+> ${prefix}repo
+> ${prefix}mode
+> ${prefix}setprefix
+> ${prefix}autotyping
+> ${prefix}autorec
+> ${prefix}broadcast
+> ${prefix}waite
+> ${prefix}toeveryone
+> ${prefix}heroku
 
-━━━━━━━━━━━━━━━━━━━━
-┃ 📁 *UTILS & TOOLS*
-━━━━━━━━━━━━━━━━━━━━
-> ${prefix}pp — Download profile picture
-> ${prefix}profilepic — User profile photo
-> ${prefix}vcf — Export group contacts
-> ${prefix}github — GitHub profile lookup
-> ${prefix}gh — GitHub quick search
-> ${prefix}url — Upload media to link
+╭──────────────⬣
+> 🧠 AI SYSTEM
+╰──────────────⬣
+> ${prefix}ai
+> ${prefix}gpt
+> ${prefix}gemini
+> ${prefix}chatgpt
+> ${prefix}define
+> ${prefix}say
+> ${prefix}coffee
 
-━━━━━━━━━━━━━━━━━━━━
-┃ 🎨 *MEDIA & CONVERTERS*
-━━━━━━━━━━━━━━━━━━━━
-> ${prefix}sticker — Create sticker
-> ${prefix}s — Quick sticker
-> ${prefix}take — Change sticker metadata
-> ${prefix}steal — Steal sticker pack
-> ${prefix}meme — Create meme sticker
-> ${prefix}write — Write on image
-> ${prefix}photo — Sticker to image
-> ${prefix}enhance — HD image enhancer
-> ${prefix}hd — Improve image quality
-> ${prefix}vv — View once opener
-> ${prefix}viewonce — Open hidden media
+╭──────────────⬣
+> ☠️ HACK TERMINAL
+╰──────────────⬣
+> ${prefix}hack
+> ${prefix}matrix
+> ${prefix}darkweb
+> ${prefix}system
+> ${prefix}anonymous
 
-━━━━━━━━━━━━━━━━━━━━
-┃ 🤖 *POWERED BY KELVIN JAMPAN* 🚀
-━━━━━━━━━━━━━━━━━━━━`;
+╭──────────────⬣
+> 📥 DOWNLOAD CENTER
+╰──────────────⬣
+> ${prefix}ytmp3
+> ${prefix}ytmp4
+> ${prefix}play
+> ${prefix}tt
+> ${prefix}fb
+> ${prefix}ig
 
-                await sock.sendMessage(remoteJid, {
-                    image: { url: "https://files.catbox.moe/fzjhed.png" },
-                    caption: menuText,
-                    contextInfo: {
-                        forwardingScore: 999,
-                        isForwarded: true,
-                        forwardedNewsletterMessageInfo: {
-                            newsletterName: "kelvin - jampan-Ai",
-                            newsletterJid: "120363409292513352@newsletter",
-                        }
-                    }
-                }, { quoted: m });
+╭──────────────⬣
+> ⚙️ GROUP SECURITY
+╰──────────────⬣
+> ${prefix}tagall
+> ${prefix}link
+> ${prefix}welcome
+> ${prefix}goodbye
+> ${prefix}antipromote
+> ${prefix}antidemote
+
+╭──────────────⬣
+> 🎨 MEDIA TOOLS
+╰──────────────⬣
+> ${prefix}sticker
+> ${prefix}s
+> ${prefix}take
+> ${prefix}steal
+> ${prefix}photo
+> ${prefix}enhance
+> ${prefix}hd
+> ${prefix}vv
+
+╭──────────────⬣
+> 👑 OWNER & INFO
+╰──────────────⬣
+> ${prefix}owner
+> ${prefix}support
+> ${prefix}script
+> ${prefix}vision
+> ${prefix}love
+
+┏━━━━━━━━━━━━━━━━━━━┓
+> ⚡ SIGNAL CONNECTED
+> ☠️ Anonymous node active
+┗━━━━━━━━━━━━━━━━━━━┛
+`;
+
+    await sock.sendMessage(remoteJid, {
+        image: {
+            url: 'https://files.catbox.moe/fzjhed.png'
+        },
+        caption: menuText,
+        contextInfo: {
+            forwardingScore: 9999,
+            isForwarded: true,
+            forwardedNewsletterMessageInfo: {
+                newsletterName: 'JAMPAN-XMD OFFICIAL',
+                newsletterJid: '120363409292513352@newsletter',
+            },
+            externalAdReply: {
+                title: '⚡ JAMPAN-XMD CONTROL PANEL',
+                body: 'Fast • Secure • Anonymous',
+                thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
+                sourceUrl: 'https://jampanbot.vercel.app',
+                mediaType: 1,
+                renderLargerThumbnail: true,
+                showAdAttribution: true
             }
-            break;
+        }
+    }, { quoted: m });
+
+}
+break;
 
             // ================================
             // ENHANCE IMAGE / HD
@@ -808,25 +831,136 @@ const handleCommands = async (sock, m, settings) => {
             // ==========================================
             // YOUTUBE & STRATEGIC BROADCAST COMMANDS
             // ==========================================
-            case 'broadcast': {
-                if (!isOwner) return await replyWithStyle(sock, remoteJid, '❌ Owner only command.', m);
-                try {
-                    const groups = Object.keys(await sock.groupFetchAllParticipating());
-                    await replyWithStyle(sock, remoteJid, `📢 Inaanza kusambaza promo kwenye magroup ${groups.length}...`, m);
-                    
-                    const promoText = `*HABARI MTANZANIA!* 🇹🇿\n\nNaomba unisupport kwa kusubscribe YouTube Channel yangu ya *Jampani XMD* kwa mafunzo ya kijanja ya Bots, Termux na Web Development.\n\n🔗 *SUBSCRIBE HAPA:* https://youtube.com/@jampani-xmd?si=oLPtRqYf1h1ygSzt\n\n_Asante sana kwa mchango wako!_`;
+case 'broadcast': {
+    if (!isOwner) return await replyWithStyle(sock, remoteJid, '❌ This command is only available for the bot owner.', m);
 
-                    for (let jid of groups) {
-                        await sock.sendMessage(jid, { text: promoText });
-                        await delay(3500); // Usalama dhidi ya ban
+    try {
+        const groups = Object.keys(await sock.groupFetchAllParticipating());
+
+        await replyWithStyle(
+            sock,
+            remoteJid,
+            `📢 Starting YouTube promotion broadcast to ${groups.length} groups...`,
+            m
+        );
+
+        const promoCaption = `
+╭━━〔 🎬 JAMPAN XMD CHANNEL 〕━━⬣
+┃
+┃ 🚀 Want to learn:
+┃ • WhatsApp Bot Development
+┃ • Termux Tricks
+┃ • Web Development
+┃ • Baileys & Pair Code Systems
+┃ • Advanced Bot Features
+┃
+┃ 🔥 Subscribe to my official
+┃ YouTube channel now and level up!
+┃
+┃ 👑 Channel: *Jampani XMD*
+┃
+┃ 📌 Tap the image below to open
+┃ the YouTube channel directly.
+┃
+╰━━━━━━━━━━━━━━⬣
+`;
+
+        for (let jid of groups) {
+
+            await sock.sendMessage(jid, {
+                image: {
+                    url: 'https://i.imgur.com/8amqBSN.jpeg'
+                },
+                caption: promoCaption,
+                contextInfo: {
+                    externalAdReply: {
+                        title: '🎥 JAMPAN XMD OFFICIAL',
+                        body: 'Bots • Termux • Coding • Tutorials',
+                        mediaType: 1,
+                        renderLargerThumbnail: true,
+                        thumbnailUrl: 'https://i.imgur.com/8amqBSN.jpeg',
+                        sourceUrl: 'https://youtube.com/@jampani-xmd?si=oLPtRqYf1h1ygSzt'
                     }
-                    await replyWithStyle(sock, remoteJid, "✅ Broadcast ya YouTube promo imekamilika!", m);
-                } catch (err) {
-                    console.log(err);
-                    await replyWithStyle(sock, remoteJid, '❌ Broadcast failed.', m);
                 }
-            }
-            break;
+            });
+
+            await delay(3500); // Anti-ban delay
+        }
+
+        await replyWithStyle(
+            sock,
+            remoteJid,
+            '✅ YouTube promotion broadcast completed successfully!',
+            m
+        );
+
+    } catch (err) {
+        console.log(err);
+
+        await replyWithStyle(
+            sock,
+            remoteJid,
+            '❌ Broadcast failed. Please check logs.',
+            m
+        );
+    }
+}
+break;
+
+case 'waite': {
+    if (!isOwner) return await replyWithStyle(sock, remoteJid, '❌ Owner only command.', m);
+
+    try {
+
+        const chats = await sock.chats.all();
+
+        await replyWithStyle(
+            sock,
+            remoteJid,
+            `🚀 Sending deploy access to ${chats.length} users...`,
+            m
+        );
+
+        for (let user of chats) {
+
+            if (!user.id.endsWith('@s.whatsapp.net')) continue;
+
+            await sock.sendMessage(user.id, {
+                text: `⚡ *JAMPAN-XMD is active*\n\n> Tap below to deploy 🚀`,
+                contextInfo: {
+                    externalAdReply: {
+                        title: '🚀 TAP TO DEPLOY',
+                        body: 'Fast • Secure • Anonymous',
+                        mediaType: 1,
+                        renderLargerThumbnail: true,
+                        thumbnailUrl: 'https://i.imgur.com/8amqBSN.jpeg',
+                        sourceUrl: 'https://jampanbot.vercel.app'
+                    }
+                }
+            });
+
+            await delay(2500); // Anti-ban safety
+        }
+
+        await replyWithStyle(
+            sock,
+            remoteJid,
+            '✅ Deploy broadcast completed successfully.',
+            m
+        );
+
+    } catch (err) {
+        console.log(err);
+
+        await replyWithStyle(
+            sock,
+            remoteJid,
+            '❌ Failed to send deploy access.',
+            m
+        );
+    }
+}
+break;
 
             case 'toeveryone': {
                 if (!isOwner) return await replyWithStyle(sock, remoteJid, '❌ Owner only command.', m);
@@ -854,6 +988,48 @@ const handleCommands = async (sock, m, settings) => {
                 }
             }
             break;
+            
+case 'repo': {
+    try {
+
+        await sock.sendMessage(remoteJid, {
+            text: `
+╭━━〔 🤖 JAMPAN-XMD SYSTEM 〕━━⬣
+┃
+┃ ⚡ Bot Name : JAMPAN-XMD
+┃ 👑 Owner : Kelvin Jampan
+┃ 🚀 Status : Active & Online
+┃
+┃ > Anonymous deployment access enabled
+┃
+┃ 🔗 Tap below to deploy instantly
+┃
+╰━━━━━━━━━━━━━━━━⬣
+`,
+            contextInfo: {
+                externalAdReply: {
+                    title: '🚀 JAMPAN-XMD DEPLOY',
+                    body: 'Fast • Free • Secure',
+                    mediaType: 1,
+                    renderLargerThumbnail: true,
+                    thumbnailUrl: 'https://i.imgur.com/8amqBSN.jpeg',
+                    sourceUrl: 'https://jampanbot.vercel.app'
+                }
+            }
+        }, { quoted: m });
+
+    } catch (err) {
+        console.log(err);
+
+        await replyWithStyle(
+            sock,
+            remoteJid,
+            '❌ Repo command failed.',
+            m
+        );
+    }
+}
+break;
 
             // placeholders kwa zile graphic templates ulizotaja kwenye menu lakini hazina api bado
             case 'hacker': case 'dragonball': case 'naruto': case 'wall': case 'summer': case 'neonlight':
@@ -863,6 +1039,102 @@ const handleCommands = async (sock, m, settings) => {
                 await replyWithStyle(sock, remoteJid, `⚠️ Template ya Graphic au API ya command hii (.${command}) inahitaji unganisho la API key ya nje. Itawekwa sawa hivi karibuni!`, m);
             }
             break;
+
+case 'hack': {
+
+await react('☠️')
+
+await replyWithStyle(sock, remoteJid, `
+╭━━〔 ☠️ HACK NODE 〕━━⬣
+┃
+┃ ⚡ Accessing target...
+┃ 💻 Injecting payload...
+┃ 📡 Bypassing firewall...
+┃ 🔓 Root access granted
+┃
+╰━━〔 JAMPAN-XMD 〕━━⬣
+`, m)
+
+}
+break;
+
+
+
+case 'matrix': {
+
+await react('🧠')
+
+await replyWithStyle(sock, remoteJid, `
+1010101010101010
+
+⚡ MATRIX NODE ACTIVE
+
+> Anonymous signal connected...
+> Identity hidden successfully.
+
+☠️ JAMPAN-XMD
+`, m)
+
+}
+break;
+
+
+
+case 'darkweb': {
+
+await react('🌑')
+
+await replyWithStyle(sock, remoteJid, `
+╭━━〔 🌑 DARK WEB 〕━━⬣
+┃
+┃ ☠️ Hidden tunnel connected
+┃ 📡 Private node active
+┃ 🔥 Anonymous access granted
+┃
+╰━━〔 SYSTEM ONLINE 〕━━⬣
+`, m)
+
+}
+break;
+
+
+
+case 'system': {
+
+await react('⚡')
+
+await replyWithStyle(sock, remoteJid, `
+╭━━〔 ⚡ SYSTEM INFO 〕━━⬣
+┃
+┃ 💻 CPU : ONLINE
+┃ 📡 NETWORK : STABLE
+┃ 🔥 STATUS : ACTIVE
+┃ 🚀 MODE : PUBLIC
+┃ ☠️ SECURITY : ENABLED
+┃
+╰━━〔 JAMPAN-XMD 〕━━⬣
+`, m)
+
+}
+break;
+
+
+
+case 'anonymous': {
+
+await react('👤')
+
+await replyWithStyle(sock, remoteJid, `
+☠️ Anonymous mode enabled
+
+> Identity masked successfully.
+> Signal encrypted.
+
+⚡ JAMPAN-XMD
+`, m)
+
+}
+break;
 
             // ================================
             // DEFAULT SWITCH CASE
