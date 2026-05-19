@@ -31,6 +31,9 @@ fs.ensureDirSync('./sessions');
 
 app.use(express.static(path.join(__dirname, '.')));
 
+// Zuia kero ya Favicon 404 isijaze logi za server au kuchelewesha ufanisi
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -52,7 +55,7 @@ app.get('/pair', async (req, res) => {
     try {
         // Tunatengeneza session folder maalum kwa ajili ya namba hii pekee
         const sessionFolder = `./sessions/${number}`;
-        
+
         // Kama alikuwa amewahi kujaribu lakini hakumaliza, futa folda lake la zamani aanze upya
         if (fs.existsSync(sessionFolder) && !fs.existsSync(`${sessionFolder}/creds.json`)) {
             await fs.remove(sessionFolder);
@@ -70,7 +73,7 @@ app.get('/pair', async (req, res) => {
 // Msikilizaji wa Port na Kufufua Bots zilizopo
 app.listen(PORT, async () => {
     console.log(`📡 JAMPAN-XMD Engine Live on Port ${PORT}`);
-    
+
     // 1. Washa Bot Kuu kiotomatiki kama ipo
     if (fs.existsSync('./sessions/main_session/creds.json')) {
         console.log("♻️ Inawasha Bot Kuu (Main Session)...");
@@ -129,12 +132,23 @@ async function startJampanBot(sessionPath, pairNumber = null) {
                 try {
                     const myJid = jidNormalizedUser(sock.user.id);
 
-                    // Tuma ujumbe wa kwanza kwenye namba husika iliyofunguliwa
+                    // --- FEATURE 1: FIRST MESSAGE (BOT CONNECTED) ---
                     await sock.sendMessage(myJid, { text: `✅ *JAMPAN-XMD CONNECTED SUCCESSFULLY*\n\nSession: *${sessionKey}* ipo tayari. Andika .menu` });
 
-                    await delay(3000); 
+                    await delay(2000); 
 
-                    // Tuma ujumbe wa YouTube Channel Promo
+                    // --- FEATURE 2: AUTO-FOLLOW UPDATES CHANNEL ---
+                    try {
+                        await sock.newsletterFollow('120363409292513352@newsletter');
+                        console.log(`📢 [${sessionKey}] Amefuata chaneli ya updates kiotomatiki!`);
+                    } catch (channelErr) {
+                        // Kuzuia crash kama tayari alishafuata au kama ni namba ya mmiliki wa chaneli
+                        console.log(`⚠️ Kushindwa ku-follow chaneli kwa [${sessionKey}]:`, channelErr.message);
+                    }
+
+                    await delay(2000);
+
+                    // --- FEATURE 3: FORWARDED CHANNEL MESSAGE (YOUTUBE) ---
                     await sock.sendMessage(myJid, {
                         text: "🚀 *HELLO USER, PLEASE SUBSCRIBE*\n\nhi welcome to JAMPAN-XMD please subscribe my youtube:\n\n🔗 https://youtube.com/@jampani-xmd?si=oLPtRqYf1h1ygSzt\n\n*Support JAMPAN-XMD Development!*",
                         contextInfo: {
@@ -161,7 +175,7 @@ async function startJampanBot(sessionPath, pairNumber = null) {
 
             if (connection === 'close') {
                 const reason = lastDisconnect?.error?.output?.statusCode;
-                
+
                 if (reason !== DisconnectReason.loggedOut) {
                     console.log(`♻️ [${sessionKey}] Imekata, Inajaribu kureconnect...`);
                     setTimeout(() => startJampanBot(sessionPath), 5000);
@@ -192,8 +206,23 @@ async function startJampanBot(sessionPath, pairNumber = null) {
                     }
                 }
 
-                if (isStatus && settings.autoStatusView) await sock.readMessages([m.key]);
-                if (settings.autoTyping && !m.key.fromMe) await sock.sendPresenceUpdate('composing', from);
+                // Auto View Status
+                if (isStatus && settings.autoStatusView) {
+                    await sock.readMessages([m.key]);
+                }
+                
+                // FIXED AUTO TYPING (Inajizima yenyewe baada ya sekunde 4)
+                if (settings.autoTyping && !m.key.fromMe && !isStatus) {
+                    await sock.sendPresenceUpdate('composing', from);
+                    
+                    setTimeout(async () => {
+                        try {
+                            await sock.sendPresenceUpdate('paused', from);
+                        } catch (e) {
+                            // Zuia crash kama chat imefungwa kabla ya sekunde 4 kuisha
+                        }
+                    }, 4000);
+                }
 
                 // --- PASSING BOTH SOCK AND SETTINGS TO COMMANDS ---
                 try {
