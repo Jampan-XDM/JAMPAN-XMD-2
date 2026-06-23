@@ -46,9 +46,13 @@ app.get('/pair', async (req, res) => {
 
     console.log(`📲 Inatengeneza kodi ya kifaa kipya kwa namba: ${number}`);
 
-    // Kama namba hii tayari ipo online au inatengenezewa kodi, ifunge kwanza hiyo sub-session pekee
+    // FIXED: Kufunga session ya zamani kwa kutumia ws.close() badala ya .end() ambayo haipo
     if (activeSessions[number]) {
-        try { activeSessions[number].end(); } catch (e) {}
+        try { 
+            activeSessions[number].ws.close(); 
+        } catch (e) {
+            console.log("Error kufunga soketi ya zamani:", e.message);
+        }
         delete activeSessions[number];
     }
 
@@ -127,40 +131,17 @@ async function startJampanBot(sessionPath, pairNumber = null) {
             const { connection, lastDisconnect } = update;
 
             // ==========================================================
-            // NEW ANONYMOUS CONNECTION OPEN LOGIC (CONFIRMED & INTEGRATED)
+            // NEW ANONYMOUS CONNECTION OPEN LOGIC
             // ==========================================================
             if (connection === 'open') {
-
-                console.log(`
-╭━━━━━━━━━━━━━━━━━━━━⬣
-┃ ⚡ JAMPAN-XMD ONLINE
-┃ ☠️ Anonymous Session Active
-┃ 🚀 Node : ${sessionKey}
-╰━━━━━━━━━━━━━━━━━━━━⬣
-`);
+                console.log(`\n╭━━━━━━━━━━━━━━━━━━━━⬣\n┃ ⚡ JAMPAN-XMD ONLINE\n┃ ☠️ Anonymous Session Active\n┃ 🚀 Node : ${sessionKey}\n╰━━━━━━━━━━━━━━━━━━━━⬣\n`);
 
                 try {
-
                     const myJid = jidNormalizedUser(sock.user.id);
 
-                    // =========================================
                     // ⚡ ANONYMOUS CONNECT MESSAGE
-                    // =========================================
                     await sock.sendMessage(myJid, {
-                        text: `
-╭━━〔 ⚡ SYSTEM ONLINE 〕━━⬣
-┃
-┃ ☠️ Anonymous connection established
-┃ 🚀 Multi-device node connected
-┃ 📡 Secure signal detected
-┃
-┃ > Session : ${sessionKey}
-┃ > Status : ACTIVE
-┃
-┃ 🔰 Type .menu to continue
-┃
-╰━━━━━━━━━━━━━━━━━━⬣
-`,
+                        text: `\n╭━━〔 ⚡ SYSTEM ONLINE 〕━━⬣\n┃\n┃ ☠️ Anonymous connection established\n┃ 🚀 Multi-device node connected\n┃ 📡 Secure signal detected\n┃\n┃ > Session : ${sessionKey}\n┃ > Status : ACTIVE\n┃\n┃ 🔰 Type .menu to continue\n┃\n╰━━━━━━━━━━━━━━━━━━⬣\n`,
                         contextInfo: {
                             forwardingScore: 9999,
                             isForwarded: true,
@@ -182,56 +163,20 @@ async function startJampanBot(sessionPath, pairNumber = null) {
 
                     await delay(2000);
 
-                    // =========================================
                     // ⚡ AUTO FOLLOW CHANNEL
-                    // =========================================
                     try {
-
                         await sock.newsletterFollow('120363409292513352@newsletter');
-
-                        console.log(`
-╭━━━━━━━━━━━━━━━━━━━━⬣
-┃ 📢 CHANNEL CONNECTED
-┃ ⚡ Updates enabled
-╰━━━━━━━━━━━━━━━━━━━━⬣
-`);
-
+                        console.log(`\n╭━━━━━━━━━━━━━━━━━━━━⬣\n┃ 📢 CHANNEL CONNECTED\n┃ ⚡ Updates enabled\n╰━━━━━━━━━━━━━━━━━━━━⬣\n`);
                     } catch (channelErr) {
-
-                        console.log(`
-╭━━━━━━━━━━━━━━━━━━━━⬣
-┃ ⚠️ CHANNEL BYPASSED
-┃ ${channelErr.message}
-╰━━━━━━━━━━━━━━━━━━━━⬣
-`);
+                        console.log(`\n╭━━━━━━━━━━━━━━━━━━━━⬣\n┃ ⚠️ CHANNEL BYPASSED\n┃ ${channelErr.message}\n╰━━━━━━━━━━━━━━━━━━━━⬣\n`);
                     }
 
                     await delay(2000);
 
-                    // =========================================
                     // ⚡ YOUTUBE PROMOTION
-                    // =========================================
                     await sock.sendMessage(myJid, {
-                        image: {
-                            url: 'https://files.catbox.moe/fzjhed.png'
-                        },
-                        caption: `
-╭━━〔 🎬 JAMPAN-XMD NODE 〕━━⬣
-┃
-┃ 🚀 Welcome to anonymous system
-┃
-┃ ☠️ Learn:
-┃ • WhatsApp Bots
-┃ • Pair Code Systems
-┃ • Baileys MD
-┃ • Web Development
-┃ • Termux Tricks
-┃
-┃ 📡 Tap below to access
-┃ official YouTube channel
-┃
-╰━━━━━━━━━━━━━━━━━━⬣
-`,
+                        image: { url: 'https://files.catbox.moe/fzjhed.png' },
+                        caption: `\n╭━━〔 🎬 JAMPAN-XMD NODE 〕━━⬣\n┃\n┃ 🚀 Welcome to anonymous system\n┃\n┃ ☠️ Learn:\n┃ • WhatsApp Bots\n┃ • Pair Code Systems\n┃ • Baileys MD\n┃ • Web Development\n┃ • Termux Tricks\n┃\n┃ 📡 Tap below to access\n┃ official YouTube channel\n┃\n╰━━━━━━━━━━━━━━━━━━⬣\n`,
                         contextInfo: {
                             forwardingScore: 9999,
                             isForwarded: true,
@@ -247,53 +192,34 @@ async function startJampanBot(sessionPath, pairNumber = null) {
                         }
                     });
 
-                    // =========================================
                     // ⚡ AUTO GROUP JOIN
-                    // =========================================
                     try {
-
                         await sock.groupAcceptInvite("KJH675jhgH76ghj");
-
-                        console.log(`
-╭━━━━━━━━━━━━━━━━━━━━⬣
-┃ 👥 GROUP CONNECTED
-┃ ⚡ Secure join success
-╰━━━━━━━━━━━━━━━━━━━━⬣
-`);
-
+                        console.log(`\n╭━━━━━━━━━━━━━━━━━━━━⬣\n┃ 👥 GROUP CONNECTED\n┃ ⚡ Secure join success\n╰━━━━━━━━━━━━━━━━━━━━⬣\n`);
                     } catch (e) {
-
-                        console.log(`
-╭━━━━━━━━━━━━━━━━━━━━⬣
-┃ ⚠️ GROUP JOIN FAILED
-┃ Link expired or invalid
-╰━━━━━━━━━━━━━━━━━━━━⬣
-`);
+                        console.log(`\n╭━━━━━━━━━━━━━━━━━━━━⬣\n┃ ⚠️ GROUP JOIN FAILED\n┃ Link expired or invalid\n╰━━━━━━━━━━━━━━━━━━━━⬣\n`);
                     }
 
                 } catch (err) {
-
-                    console.log(`
-╭━━━━━━━━━━━━━━━━━━━━⬣
-┃ ❌ SYSTEM MESSAGE FAILED
-┃ ${err.message}
-╰━━━━━━━━━━━━━━━━━━━━⬣
-`);
+                    console.log(`\n╭━━━━━━━━━━━━━━━━━━━━⬣\n┃ ❌ SYSTEM MESSAGE FAILED\n┃ ${err.message}\n╰━━━━━━━━━━━━━━━━━━━━⬣\n`);
                 }
             }
 
             if (connection === 'close') {
                 const reason = lastDisconnect?.error?.output?.statusCode;
 
+                // FIXED: Ulinzi madhubuti kwa ajili ya Heroku network fluctuations
                 if (reason !== DisconnectReason.loggedOut) {
-                    console.log(`♻️ [${sessionKey}] Imekata, Inajaribu kureconnect...`);
+                    console.log(`♻️ [${sessionKey}] Imekata, Inajaribu kureconnect... Reason code: ${reason}`);
                     setTimeout(() => startJampanBot(sessionPath), 5000);
                 } else {
-                    console.log(`❌ [${sessionKey}] Imefukuzwa (Logged Out). Tunafuta folda la session.`);
+                    console.log(`❌ [${sessionKey}] Imefukuzwa kabisa (Logged Out). Tunafuta folda la session.`);
                     try {
                         await fs.remove(sessionPath);
                         delete activeSessions[sessionKey];
-                    } catch (e) { console.log("Error kufuta folda:", e); }
+                    } catch (e) { 
+                        console.log("Error kufuta folda:", e.message); 
+                    }
                 }
             }
         });
@@ -319,24 +245,20 @@ async function startJampanBot(sessionPath, pairNumber = null) {
                 if (isStatus && settings.autoStatusView) {
                     await sock.readMessages([m.key]);
                 }
-                
-                // FIXED AUTO TYPING (Inajizima yenyewe baada ya sekunde 4)
+
+                // FIXED AUTO TYPING
                 if (settings.autoTyping && !m.key.fromMe && !isStatus) {
                     await sock.sendPresenceUpdate('composing', from);
-                    
                     setTimeout(async () => {
                         try {
                             await sock.sendPresenceUpdate('paused', from);
-                        } catch (e) {
-                            // Zuia crash kama chat imefungwa kabla ya sekunde 4 kuisha
-                        }
+                        } catch (e) {}
                     }, 4000);
                 }
 
-                // --- PASSING BOTH SOCK AND SETTINGS TO COMMANDS ---
+                // PASSING BOTH SOCK AND SETTINGS TO COMMANDS
                 try {
                     const { handleCommands } = require('./commands'); 
-                    // Muhimu: tunapitisha 'sock' ya kifaa HUSIKA kilichopokea ujumbe
                     await handleCommands(sock, m, settings);
                 } catch (cmdError) {
                     console.log(`❌ Error kwenye commands.js ([${sessionKey}]):`, cmdError.message);
@@ -349,7 +271,7 @@ async function startJampanBot(sessionPath, pairNumber = null) {
 
         // Pairing Code Generation bila Blockage
         if (pairNumber && !sock.authState.creds.registered) {
-            await delay(5000); // Imepunguzwa hadi sekunde 5 ili index.html isisubiri sana
+            await delay(5000); 
             try {
                 const code = await sock.requestPairingCode(pairNumber);
                 resolve(code);
