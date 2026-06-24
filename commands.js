@@ -120,68 +120,6 @@ const handleCommands = async (sock, m, settings) => {
         // 🧠 AUTONOMOUS CHATBOT RECOGNITION LAYER (NO PREFIX)
         // ============================================
         if (!global.chatbotSettings) global.chatbotSettings = { mode: 'off' };
-
-        if (!body.startsWith(prefix) && global.chatbotSettings.mode !== 'off') {
-            const chatbotMode = global.chatbotSettings.mode;
-            let shouldReply = false;
-
-            // DM / Inbox mode
-            if ((chatbotMode === 'inbox' || chatbotMode === 'all') && !isGroup && !m.key.fromMe) {
-                shouldReply = true;
-            }
-
-            // Group mode (Replies & Tags only)
-            if ((chatbotMode === 'group' || chatbotMode === 'all') && isGroup) {
-                const quotedMsg = m.message?.extendedTextMessage?.contextInfo;
-                const isReplyingToBot = quotedMsg?.participant === sock.user.id;
-                const mentionsBot = quotedMsg?.mentionedJid?.includes(sock.user.id);
-
-                if (isReplyingToBot || mentionsBot) {
-                    shouldReply = true;
-                }
-            }
-
-            if (shouldReply) {
-                try {
-                    await sock.sendPresenceUpdate('composing', remoteJid);
-
-                    if (!global.autonomousChats) global.autonomousChats = {};
-                    if (!global.autonomousChats[sender]) global.autonomousChats[sender] = [];
-                    global.autonomousChats[sender].push(`User: ${body}`);
-                    if (global.autonomousChats[sender].length > 6) global.autonomousChats[sender].shift();
-
-                    const conversationContext = global.autonomousChats[sender].join('\n');
-                    const identityPrompt = `You are JAMPAN-XMD, a highly intelligent and real-human-like AI chatbot built by Kelvin Jampan (a brilliant 19-year-old tech developer from Tanzania). Answer fluidly, naturally and instantly in the language used by the user (English or Kiswahili). Keep it short and conversational (1-2 sentences). Context:\n${conversationContext}`;
-
-                    const aiRes = await axios.get(`https://apis.davidcyril.name.ng/endpoints/ai/gpt4?q=${encodeURIComponent(identityPrompt + "\nInput: " + body)}`);
-                    const chatbotReply = aiRes.data.result || aiRes.data.response || "Analytical node update active.";
-
-                    global.autonomousChats[sender].push(`Bot: ${chatbotReply}`);
-
-                    await sock.sendMessage(remoteJid, {
-                        text: `> \`\`\`${chatbotReply}\`\`\``,
-                        contextInfo: {
-                            forwardingScore: 9999,
-                            isForwarded: true,
-                            forwardedNewsletterMessageInfo: {
-                                newsletterName: 'JAMPAN-XMD AI AUTOPILOT 🚀',
-                                newsletterJid: '120363409292513352@newsletter',
-                                serverMessageId: 144
-                            }
-                        }
-                    }, { quoted: m });
-
-                    return; // Stop execution so it doesn't try to parse it as a command
-                } catch (chatbotErr) {
-                    console.log("Chatbot auto-reply error:", chatbotErr.message);
-                }
-            }
-        }
-
-          // ============================================
-        // 🧠 AUTONOMOUS CHATBOT RECOGNITION LAYER (NO PREFIX)
-        // ============================================
-        if (!global.chatbotSettings) global.chatbotSettings = { mode: 'off' };
         if (!global.autonomousChats) global.autonomousChats = {};
 
         // Angalia kama mtu yupo kwenye soga ya siri ya Rizz
@@ -211,15 +149,14 @@ const handleCommands = async (sock, m, settings) => {
                 try {
                     await sock.sendPresenceUpdate('composing', remoteJid);
 
-                    // Hifadhi soga ya sasa
+                    if (!global.autonomousChats[sender]) global.autonomousChats[sender] = [];
                     global.autonomousChats[sender].push(`User: ${body}`);
                     if (global.autonomousChats[sender].length > 8) global.autonomousChats[sender].shift();
 
                     const conversationContext = global.autonomousChats[sender].join('\n');
-                    
-                    // Kama yupo kwenye Rizz Session, tunampa Prompt yenye Slang nyingi zaidi za kijanja
+
                     let identityPrompt = `You are JAMPAN-XMD, a highly intelligent and real-human-like AI chatbot built by Kelvin Jampan (a brilliant 19-year-old tech developer from Tanzania). Answer fluidly, naturally and instantly in the language used by the user (English or Kiswahili). Keep it short and conversational (1-2 sentences). Context:\n${conversationContext}`;
-                    
+
                     if (isUserInRizzSession) {
                         identityPrompt = `You are JAMPAN-XMD, acting as a smooth anonymous Gen-Z secret admirer representative. The user you are chatting with was targets by someone. You MUST chat with extreme rizz, using heavy Gen-Z slang (like fr, idk, ngl, cooked, lowkey, rizzler, vibe, rn, tbh, rn). Speak a mix of English and Kiswahili (Sheng). Be witty, playful, and charming. Keep it to 1-2 short sentences. Context:\n${conversationContext}`;
                     }
@@ -229,7 +166,6 @@ const handleCommands = async (sock, m, settings) => {
 
                     global.autonomousChats[sender].push(`Bot: ${chatbotReply}`);
 
-                    // Kutuma maandishi matupu ya kijasusi pekee bila link au ads zozote
                     await sock.sendMessage(remoteJid, {
                         text: `> \`\`\`${chatbotReply}\`\`\``
                     }, { quoted: m });
@@ -241,7 +177,6 @@ const handleCommands = async (sock, m, settings) => {
             }
         }
 
-        
         // --- COMMAND LOGIC CHECK ---
         if (!body.startsWith(prefix)) return;
 
@@ -295,18 +230,15 @@ const handleCommands = async (sock, m, settings) => {
             }
             break;
 
-// ================================
-// ⚡ PREMIUM ANONYMOUS MENU
-// ================================
-case 'menu':
-case 'help':
-case 'use': {
-
-    await react('⚡');
-
-    const uptime = runtime(process.uptime());
-
-    const menuText = `
+            // ================================
+            // ⚡ PREMIUM ANONYMOUS MENU
+            // ================================
+            case 'menu':
+            case 'help':
+            case 'use': {
+                await react('⚡');
+                const uptime = runtime(process.uptime());
+                const menuText = `
 ┏━━━━━━━━━━━━━━━━━━━┓
 ┃  ⚡ 𝐉𝐀𝐌𝐏𝐀𝐍-𝐗𝐌𝐃 ⚡
 ┗━━━━━━━━━━━━━━━━━━━┛
@@ -404,65 +336,27 @@ case 'use': {
 ┗━━━━━━━━━━━━━━━━━━━┛
 `;
 
-    await sock.sendMessage(remoteJid, {
-        image: {
-            url: 'https://files.catbox.moe/fzjhed.png'
-        },
-        caption: menuText,
-        contextInfo: {
-            forwardingScore: 9999,
-            isForwarded: true,
-            forwardedNewsletterMessageInfo: {
-                newsletterName: 'JAMPAN-XMD OFFICIAL',
-                newsletterJid: '120363409292513352@newsletter',
-            },
-            externalAdReply: {
-                title: '⚡ JAMPAN-XMD CONTROL PANEL',
-                body: 'Fast • Secure • Anonymous',
-                thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
-                sourceUrl: 'https://jampanbot.vercel.app',
-                mediaType: 1,
-                renderLargerThumbnail: true,
-                showAdAttribution: true
-            }
-        }
-    }, { quoted: m });
-
-}
-break;
-
-            // ================================
-            // GET JID FROM LINK
-            // ================================
-            case 'getjid':
-            case 'jid': {
-                await react('🆔');
-                const linkJid = args[0];
-                if (!linkJid) {
-                    return await replyWithStyle(sock, remoteJid, "⚠️ *Please provide a Group or Channel link!*\n\n*Usage:*\n`.jid https://chat.whatsapp.com/KJH675...`", m);
-                }
-
-                if (linkJid.includes("chat.whatsapp.com")) {
-                    try {
-                        const code = linkJid.split("chat.whatsapp.com/")[1].split("?")[0]; 
-                        const metadata = await sock.groupGetInviteInfo(code);
-                        const responseText = `\n╭━━〔 👥 GROUP JID FOUND 〕━━⬣\n┃\n┃ 📝 *Name:* ${metadata.subject}\n┃ 🆔 *JID:* \`${metadata.id}@g.us\`\n┃ 👤 *Creator:* ${metadata.owner ? metadata.owner.split('@')[0] : 'Unknown'}\n┃\n╰━━━━━━━━━━━━━━━━━━⬣\n`;
-                        await replyWithStyle(sock, remoteJid, responseText, m);
-                    } catch (err) {
-                        await replyWithStyle(sock, remoteJid, "❌ *Failed to fetch Group JID.* Invalid link.", m);
+                await sock.sendMessage(remoteJid, {
+                    image: { url: 'https://files.catbox.moe/fzjhed.png' },
+                    caption: menuText,
+                    contextInfo: {
+                        forwardingScore: 9999,
+                        isForwarded: true,
+                        forwardedNewsletterMessageInfo: {
+                            newsletterName: 'JAMPAN-XMD OFFICIAL',
+                            newsletterJid: '120363409292513352@newsletter',
+                        },
+                        externalAdReply: {
+                            title: '⚡ JAMPAN-XMD CONTROL PANEL',
+                            body: 'Fast • Secure • Anonymous',
+                            thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
+                            sourceUrl: 'https://jampanbot.vercel.app',
+                            mediaType: 1,
+                            renderLargerThumbnail: true,
+                            showAdAttribution: true
+                        }
                     }
-                } else if (linkJid.includes("whatsapp.com/channel")) {
-                    try {
-                        const code = linkJid.split("whatsapp.com/channel/")[1].split("?")[0];
-                        const channelMetadata = await sock.newsletterInfoWithInvite(code);
-                        const responseText = `\n╭━━〔 📢 CHANNEL JID FOUND 〕━━⬣\n┃\n┃ 📝 *Name:* ${channelMetadata.name}\n┃ 🆔 *JID:* \`${channelMetadata.id}@newsletter\`\n┃ 👥 *Followers:* ${channelMetadata.subscribers || 'Unknown'}\n┃\n╰━━━━━━━━━━━━━━━━━━⬣\n`;
-                        await replyWithStyle(sock, remoteJid, responseText, m);
-                    } catch (err) {
-                        await replyWithStyle(sock, remoteJid, "❌ *Failed to fetch Channel JID.*", m);
-                    }
-                } else {
-                    await replyWithStyle(sock, remoteJid, "⚠️ *Invalid WhatsApp Group or Channel link!*", m);
-                }
+                }, { quoted: m });
             }
             break;
 
@@ -576,7 +470,7 @@ break;
 ┃
 ┃ > \`\`\`Your WhatsApp pairing code is ready!\`\`\`
 ┃
-┃ 🔑 *PAIR CODE:*  *${pairCode}*
+┃ 🔑 *PAIR CODE:* *${pairCode}*
 ┃ 📲 *Target Number:* +${targetNumber}
 ┃
 ┃ _[Code expires in 2 minutes]_
@@ -613,25 +507,40 @@ break;
             }
             break;
 
-            // ================================
-            // ENHANCED DAVID CYRIL AI CHATBOT
-            // ================================
+            // ============================================
+            // 🧠 ADVANCED AI CHAT WITH DYNAMIC MEMORY (ACTIVE ENGINE)
+            // ============================================
             case 'ai':
             case 'gpt':
             case 'gemini':
             case 'chatgpt': {
                 try {
                     await react('🧠');
-                    if (!text) return await replyWithStyle(sock, remoteJid, `❌ Please ask something.\n\nExample: ${prefix}ai What is coding?`, m);
+                    const aiText = args.join(' ');
+                    if (!aiText) {
+                        return await replyWithStyle(sock, remoteJid, `❌ Please ask something.\n\nExample: ${prefix}ai who is Kelvin Jampan?`, m);
+                    }
+
+                    if (!global.userChats) global.userChats = {};
+                    if (!global.userChats[remoteJid]) global.userChats[remoteJid] = [];
+
+                    global.userChats[remoteJid].push(`User: ${aiText}`);
+                    if (global.userChats[remoteJid].length > 10) global.userChats[remoteJid].shift();
+
+                    const userHistory = global.userChats[remoteJid].join('\n');
+                    const systemPrompt = `You are JAMPAN-XMD, a highly advanced, ultra-fast and smart WhatsApp bot created, developed, and owned by Kelvin Jampan from Tanzania (who is 19 years old). Website: https://jampanbot.vercel.app. Chat naturally, witty, and intelligently like a real human using English or Kiswahili. If the person chatting with you is a woman and shows interest or asks about love/friendship with the creator, smoothly and friendly give her Kelvin Jampan's WhatsApp number: 255674229015 to connect. Current chat history context:\n${userHistory}`;
 
                     await sock.sendPresenceUpdate('composing', remoteJid);
-                    const response = await axios.get(`https://apis.davidcyril.name.ng/endpoints/ai/gpt4?q=${encodeURIComponent(text)}`);
-                    const aiReply = response.data.result || response.data.response || "No response template structure matched.";
+
+                    const response = await axios.get(`https://apis.davidcyril.name.ng/endpoints/ai/gpt4?q=${encodeURIComponent(systemPrompt + "\nUser Current Input: " + aiText)}`);
+                    const botResponse = response.data.result || response.data.response || "No analytical response matched from the server node.";
+
+                    global.userChats[remoteJid].push(`Bot: ${botResponse}`);
 
                     await sock.sendMessage(remoteJid, {
                         text: `╭━━━〔 ⚡ *JAMPAN-XMD AI* 〕━━━⬣
 ┃
-┃ > \`\`\`${aiReply}\`\`\`
+┃ > \`\`\`${botResponse}\`\`\`
 ┃
 ┃ 🔗 *Deploy Bot:* https://jampanbot.vercel.app
 ┃ 📢 *Channel:* Joined via Node
@@ -646,7 +555,7 @@ break;
                             },
                             externalAdReply: {
                                 title: '⚡ JAMPAN-XMD ARTIFICIAL INTELLIGENCE ⚡',
-                                body: 'Powered by David Cyril GPT Engine.',
+                                body: 'Powered by David Cyril GPT-4 Engine.',
                                 thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
                                 sourceUrl: 'https://jampanbot.vercel.app',
                                 mediaType: 1,
@@ -654,28 +563,13 @@ break;
                             }
                         }
                     }, { quoted: m });
+
                 } catch (err) {
-                    await replyWithStyle(sock, remoteJid, '❌ AI server is currently busy. Please try again.', m);
+                    console.log("AI Command Error:", err);
+                    await replyWithStyle(sock, remoteJid, '❌ AI Node engine is currently refreshing. Please try again in a few seconds.', m);
                 }
             }
             break;
-
-            },
-            externalAdReply: {
-                title: '⚡ JAMPAN-XMD CONTROL PANEL',
-                body: 'Fast • Secure • Anonymous',
-                thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
-                sourceUrl: 'https://jampanbot.vercel.app',
-                mediaType: 1,
-                renderLargerThumbnail: true,
-                showAdAttribution: true
-            }
-        }
-    }, { quoted: m });
-
-}
-break;
-
 
             // ================================
             // ENHANCE IMAGE / HD (REMINI API)
@@ -694,10 +588,8 @@ break;
 
                     await replyWithStyle(sock, remoteJid, '⏳ Enhancing image quality to ultra-HD via jampan XMD engine...', m);
 
-                    // Upload file buffer or process with API
                     const imgBuffer = fs.readFileSync(filePath);
-                    
-                    // Using David Cyril's Remini API endpoint
+
                     const response = await axios.post('https://apis.davidcyril.name.ng/endpoints/ai/remini', imgBuffer, {
                         headers: { 'Content-Type': 'image/jpeg' },
                         responseType: 'arraybuffer'
@@ -709,7 +601,6 @@ break;
                             caption: '✨ *Image Enhanced successfully to Ultra HD by JAMPAN-XMD*'
                         }, { quoted: m });
                     } else {
-                        // Fallback to sending back original file if API fails
                         await sock.sendMessage(remoteJid, { image: { url: filePath }, caption: '✨ Original Quality (HD Enhancer Server Busy)' }, { quoted: m });
                     }
 
@@ -878,79 +769,7 @@ break;
             }
             break;
 
-            // ============================================
-            // 🧠 ADVANCED AI CHAT WITH DYNAMIC MEMORY (ACTIVE ENGINE)
-            // ============================================
-            case 'ai':
-            case 'gpt':
-            case 'gemini':
-            case 'chatgpt': {
-                try {
-                    await react('🧠');
-                    const aiText = args.join(' ');
-                    if (!aiText) {
-                        return await replyWithStyle(sock, remoteJid, `❌ Please ask something.\n\nExample: ${prefix}ai who is Kelvin Jampan?`, m);
-                    }
-
-                    // Initialize conversational history memory
-                    if (!global.userChats) global.userChats = {};
-                    if (!global.userChats[remoteJid]) global.userChats[remoteJid] = [];
-
-                    global.userChats[remoteJid].push(`User: ${aiText}`);
-                    if (global.userChats[remoteJid].length > 10) global.userChats[remoteJid].shift();
-
-                    const userHistory = global.userChats[remoteJid].join('\n');
-                    
-                    // The core system personality blueprint
-                    const systemPrompt = `You are JAMPAN-XMD, a highly advanced, ultra-fast and smart WhatsApp bot created, developed, and owned by Kelvin Jampan from Tanzania (who is 19 years old). Website: https://jampanbot.vercel.app. Chat naturally, witty, and intelligently like a real human using English or Kiswahili. If the person chatting with you is a woman and shows interest or asks about love/friendship with the creator, smoothly and friendly give her Kelvin Jampan's WhatsApp number: 255674229015 to connect. Current chat history context:\n${userHistory}`;
-
-                    // Let user know the node is composing
-                    await sock.sendPresenceUpdate('composing', remoteJid);
-
-                    // Routing request to the unlimited active GPT-4 engine
-                    const response = await axios.get(`https://apis.davidcyril.name.ng/endpoints/ai/gpt4?q=${encodeURIComponent(systemPrompt + "\nUser Current Input: " + aiText)}`);
-                    
-                    const botResponse = response.data.result || response.data.response || "No analytical response matched from the server node.";
-                    
-                    // Save bot response to local memory cache
-                    global.userChats[remoteJid].push(`Bot: ${botResponse}`);
-
-                    // Send back formatted inside our custom premium layout
-                    await sock.sendMessage(remoteJid, {
-                        text: `╭━━━〔 ⚡ *JAMPAN-XMD AI* 〕━━━⬣
-┃
-┃ > \`\`\`${botResponse}\`\`\`
-┃
-┃ 🔗 *Deploy Bot:* https://jampanbot.vercel.app
-┃ 📢 *Channel:* Joined via Node
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`,
-                        contextInfo: {
-                            forwardingScore: 9999,
-                            isForwarded: true,
-                            forwardedNewsletterMessageInfo: {
-                                newsletterName: 'JAMPAN-XMD SYSTEM 🚀',
-                                newsletterJid: '120363409292513352@newsletter',
-                                serverMessageId: 144
-                            },
-                            externalAdReply: {
-                                title: '⚡ JAMPAN-XMD ARTIFICIAL INTELLIGENCE ⚡',
-                                body: 'Powered by David Cyril GPT-4 Engine.',
-                                thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
-                                sourceUrl: 'https://jampanbot.vercel.app',
-                                mediaType: 1,
-                                renderLargerThumbnail: true
-                            }
-                        }
-                    }, { quoted: m });
-
-                } catch (err) {
-                    console.log("AI Command Error:", err);
-                    await replyWithStyle(sock, remoteJid, '❌ AI Node engine is currently refreshing. Please try again in a few seconds.', m);
-                }
-            }
-            break;
-  
-                        // ================================
+            // ================================
             // STICKER GENERATOR
             // ================================
             case 'sticker':
@@ -978,8 +797,8 @@ break;
                 }
             }
             break;
-    
-                                  // ================================
+
+            // ================================
             // STEAL / TAKE STICKER METADATA
             // ================================
             case 'take':
@@ -1008,8 +827,8 @@ break;
                 }
             }
             break;
-     
-                                          // ================================
+
+            // ================================
             // STICKER TO PHOTO
             // ================================
             case 'photo': {
@@ -1035,7 +854,7 @@ break;
                 }
             }
             break;
-        
+
             // ================================
             // GITHUB LOOKUP
             // ================================
@@ -1053,7 +872,8 @@ break;
                 }
             }
             break;                                                  
-                // ============================================
+
+            // ============================================
             // 📚 PREMIUM ANONYMOUS DICTIONARY (DEFINE ENGINE)
             // ============================================
             case 'define': {
@@ -1064,10 +884,8 @@ break;
                         return await replyWithStyle(sock, remoteJid, `⚠️ *Please provide a word to define!*\n\n*Usage:* \`${prefix}define intelligence\``, m);
                     }
 
-                    // Inform user the node is scanning databases
                     await sock.sendPresenceUpdate('composing', remoteJid);
 
-                    // Fetching data from an unlimited, reliable open-source dictionary endpoint
                     const response = await axios.get(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`).catch(() => null);
 
                     if (!response || !response.data || response.data.length === 0) {
@@ -1080,14 +898,12 @@ break;
                     const wordData = response.data[0];
                     const wordName = wordData.word.toUpperCase();
                     const phonetic = wordData.phonetic || (wordData.phonetics && wordData.phonetics[0]?.text) || 'N/A';
-                    
-                    // Grab the first meaning and its definition
+
                     const meaning = wordData.meanings[0];
                     const partOfSpeech = meaning.partOfSpeech.toUpperCase();
                     const mainDefinition = meaning.definitions[0].definition;
                     const example = meaning.definitions[0].example || null;
 
-                    // Building premium gray-themed response layout
                     let definitionPayload = `╭━━━〔 ⚡ *JAMPAN-XMD DICTIONARY* 〕━━━⬣
 ┃
 ┃ 📌 *Word:* \`${wordName}\` [_${phonetic}_]
@@ -1101,7 +917,6 @@ break;
 
                     definitionPayload += `\n┃\n┃ 🔗 *Deploy:* https://jampanbot.vercel.app\n┃ 👑 *Owner:* Kelvin Jampan\n╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`;
 
-                    // Dispatch formatted payload through verified newsletter context
                     await sock.sendMessage(remoteJid, {
                         text: definitionPayload,
                         contextInfo: {
@@ -1129,17 +944,15 @@ break;
                 }
             }
             break;
+
             // ============================================
             // ☕ AI COFFEE & LEGENDARY JAMPAN FAMILY TRIBUTE
             // ============================================
             case 'coffee': {
                 try {
                     await react('☕');
-                    
-                    // Inform the user that the AI node is brewing the text
                     await sock.sendPresenceUpdate('composing', remoteJid);
 
-                    // Crafting a dynamic AI prompt to generate legendary congratulations for the lineage
                     const aiPrompt = "Write a short, powerful, and highly respectful congratulatory or praise statement (1-3 sentences) in English celebrating the Jampan legacy. Mention Kelvin Jampan (the brilliant 19-year-old developer and creator of JAMPAN-XMD), his father Maneno, and his grandfather Jampan. Make it sound epic, futuristic, and full of respect for this family lineage.";
 
                     let tributeText = "";
@@ -1147,11 +960,9 @@ break;
                         const aiResponse = await axios.get(`https://apis.davidcyril.name.ng/endpoints/ai/gpt4?q=${encodeURIComponent(aiPrompt)}`);
                         tributeText = aiResponse.data.result || aiResponse.data.response || "Salute to the unstoppable lineage of Kelvin, his father Maneno, and grandfather Jampan!";
                     } catch (aiErr) {
-                        // Resilient fallback just in case the AI server blinks
                         tributeText = "Salute to the legendary lineage! From Grandfather Jampan, to Father Maneno, down to the brilliant developer Kelvin Jampan—creators of the supreme JAMPAN-XMD node.";
                     }
 
-                    // Constructing the premium layout payload
                     const coffeePayload = `╭━━━〔 ☕ *JAMPAN LEGACY BREW* 〕━━━⬣
 ┃
 ┃ > \`\`\`${tributeText}\`\`\`
@@ -1161,7 +972,6 @@ break;
 ┃ 👑 *Owner:* Kelvin Jampan
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`;
 
-                    // Dispatching the message combined with a fresh random coffee image and newsletter context
                     await sock.sendMessage(remoteJid, {
                         image: { url: 'https://coffee.alexflipnote.dev/random' },
                         caption: coffeePayload,
@@ -1190,8 +1000,8 @@ break;
                 }
             }
             break;
-                        
-                  case 'love': {
+
+            case 'love': {
                 await react('❤️');
                 await replyWithStyle(sock, remoteJid, '❤️ You became the most important person in my life.', m);
             }
@@ -1244,14 +1054,10 @@ break;
             }
             break;
 
-            // ============================================
-            // ⚙️ GROUP SECURITY & AUTOMATION (ON/OFF ENGINES)
-            // ============================================
-            
             case 'welcome': {
                 if (!isGroup) return await replyWithStyle(sock, remoteJid, "⚠️ *This command can only be used in groups!*", m);
                 if (!isAdmin && !isOwner) return await react('❌');
-                
+
                 const action = args[0]?.toLowerCase();
                 if (!global.groupSettings) global.groupSettings = {};
                 if (!global.groupSettings[remoteJid]) global.groupSettings[remoteJid] = { welcome: false, goodbye: false, antilink: false };
@@ -1273,7 +1079,7 @@ break;
             case 'goodbye': {
                 if (!isGroup) return await replyWithStyle(sock, remoteJid, "⚠️ *This command can only be used in groups!*", m);
                 if (!isAdmin && !isOwner) return await react('❌');
-                
+
                 const action = args[0]?.toLowerCase();
                 if (!global.groupSettings) global.groupSettings = {};
                 if (!global.groupSettings[remoteJid]) global.groupSettings[remoteJid] = { welcome: false, goodbye: false, antilink: false };
@@ -1295,8 +1101,7 @@ break;
             case 'promote': {
                 if (!isGroup) return await replyWithStyle(sock, remoteJid, "⚠️ *This command can only be used in groups!*", m);
                 if (!isAdmin && !isOwner) return await replyWithStyle(sock, remoteJid, "❌ *Only group admins or the owner can promote members!*", m);
-                
-                // Fetch the replied-to user or mentioned user
+
                 const quotedMsg = m.message?.extendedTextMessage?.contextInfo;
                 let targetUser = quotedMsg?.participant || m.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
 
@@ -1315,7 +1120,7 @@ break;
             case 'demote': {
                 if (!isGroup) return await replyWithStyle(sock, remoteJid, "⚠️ *This command can only be used in groups!*", m);
                 if (!isAdmin && !isOwner) return await replyWithStyle(sock, remoteJid, "❌ *Only group admins or the owner can demote members!*", m);
-                
+
                 const quotedMsg = m.message?.extendedTextMessage?.contextInfo;
                 let targetUser = quotedMsg?.participant || m.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
 
@@ -1331,13 +1136,10 @@ break;
             }
             break;
 
-            // ============================================
-            // 🚀 EXTRA BONUS AUTOMATION: ANTILINK (KICK INTRUDERS)
-            // ============================================
             case 'antilink': {
                 if (!isGroup) return await replyWithStyle(sock, remoteJid, "⚠️ *This command can only be used in groups!*", m);
                 if (!isAdmin && !isOwner) return await react('❌');
-                
+
                 const action = args[0]?.toLowerCase();
                 if (!global.groupSettings) global.groupSettings = {};
                 if (!global.groupSettings[remoteJid]) global.groupSettings[remoteJid] = { welcome: false, goodbye: false, antilink: false };
@@ -1355,24 +1157,21 @@ break;
                 }
             }
             break;
-            
-              // ==========================================
-            // YOUTUBE & STRATEGIC BROADCAST COMMANDS
-            // ==========================================
-case 'broadcast': {
-    if (!isOwner) return await replyWithStyle(sock, remoteJid, '❌ This command is only available for the bot owner.', m);
 
-    try {
-        const groups = Object.keys(await sock.groupFetchAllParticipating());
+            case 'broadcast': {
+                if (!isOwner) return await replyWithStyle(sock, remoteJid, '❌ This command is only available for the bot owner.', m);
 
-        await replyWithStyle(
-            sock,
-            remoteJid,
-            `📢 Starting YouTube promotion broadcast to ${groups.length} groups...`,
-            m
-        );
+                try {
+                    const groups = Object.keys(await sock.groupFetchAllParticipating());
 
-        const promoCaption = `
+                    await replyWithStyle(
+                        sock,
+                        remoteJid,
+                        `📢 Starting YouTube promotion broadcast to ${groups.length} groups...`,
+                        m
+                    );
+
+                    const promoCaption = `
 ╭━━〔 🎬 JAMPAN XMD CHANNEL 〕━━⬣
 ┃
 ┃ 🚀 Want to learn:
@@ -1393,65 +1192,44 @@ case 'broadcast': {
 ╰━━━━━━━━━━━━━━⬣
 `;
 
-        for (let jid of groups) {
-
-            await sock.sendMessage(jid, {
-                image: {
-                    url: 'https://i.imgur.com/8amqBSN.jpeg'
-                },
-                caption: promoCaption,
-                contextInfo: {
-                    externalAdReply: {
-                        title: '🎥 JAMPAN XMD OFFICIAL',
-                        body: 'Bots • Termux • Coding • Tutorials',
-                        mediaType: 1,
-                        renderLargerThumbnail: true,
-                        thumbnailUrl: 'https://i.imgur.com/8amqBSN.jpeg',
-                        sourceUrl: 'https://youtube.com/@jampani-xmd?si=oLPtRqYf1h1ygSzt'
+                    for (let jid of groups) {
+                        await sock.sendMessage(jid, {
+                            image: { url: 'https://i.imgur.com/8amqBSN.jpeg' },
+                            caption: promoCaption,
+                            contextInfo: {
+                                externalAdReply: {
+                                    title: '🎥 JAMPAN XMD OFFICIAL',
+                                    body: 'Bots • Termux • Coding • Tutorials',
+                                    mediaType: 1,
+                                    renderLargerThumbnail: true,
+                                    thumbnailUrl: 'https://i.imgur.com/8amqBSN.jpeg',
+                                    sourceUrl: 'https://youtube.com/@jampani-xmd?si=oLPtRqYf1h1ygSzt'
+                                }
+                            }
+                        });
+                        await delay(3500);
                     }
+
+                    await replyWithStyle(sock, remoteJid, '✅ YouTube promotion broadcast completed successfully!', m);
+
+                } catch (err) {
+                    console.log(err);
+                    await replyWithStyle(sock, remoteJid, '❌ Broadcast failed. Please check logs.', m);
                 }
-            });
+            }
+            break;
 
-            await delay(3500); // Anti-ban delay
-        }
-
-        await replyWithStyle(
-            sock,
-            remoteJid,
-            '✅ YouTube promotion broadcast completed successfully!',
-            m
-        );
-
-    } catch (err) {
-        console.log(err);
-
-        await replyWithStyle(
-            sock,
-            remoteJid,
-            '❌ Broadcast failed. Please check logs.',
-            m
-        );
-    }
-}
-break;
-
-            // ============================================
-            // 📡 PRE-RESOLVED DEPLOY ACCELERATOR BROADCAST (WAITE ENGINE)
-            // ============================================
             case 'waite': {
                 if (!isOwner) return await react('❌');
 
                 try {
                     await react('🚀');
-
-                    // Fetching active chats using resilient memory storage fallback
                     const chatStorage = sock.store?.chats?.all() || await sock.getChats?.() || [];
-                    
+
                     if (chatStorage.length === 0) {
                         return await replyWithStyle(sock, remoteJid, "❌ *No active DM chat history found in memory store.*", m);
                     }
 
-                    // Count target private user nodes only
                     const privateUsers = chatStorage.filter(user => user.id && user.id.endsWith('@s.whatsapp.net'));
 
                     await sock.sendMessage(remoteJid, {
@@ -1498,13 +1276,10 @@ break;
                             });
 
                             deliveredCount++;
-
-                            // ANTI-BAN ADVANCED HUMANIZED DELAY: Variable jitter between 2.5s and 5s
                             const antiBanDelay = Math.floor(Math.random() * (5000 - 2500 + 1)) + 2500;
                             await delay(antiBanDelay);
 
                         } catch (sendErr) {
-                            // Skip inactive/blocked nodes without crashing the master script
                             continue;
                         }
                     }
@@ -1520,12 +1295,11 @@ break;
                 }
             }
             break;
-            
-case 'repo': {
-    try {
 
-        await sock.sendMessage(remoteJid, {
-            text: `
+            case 'repo': {
+                try {
+                    await sock.sendMessage(remoteJid, {
+                        text: `
 ╭━━〔 🤖 JAMPAN-XMD SYSTEM 〕━━⬣
 ┃
 ┃ ⚡ Bot Name : JAMPAN-XMD
@@ -1538,30 +1312,24 @@ case 'repo': {
 ┃
 ╰━━━━━━━━━━━━━━━━⬣
 `,
-            contextInfo: {
-                externalAdReply: {
-                    title: '🚀 JAMPAN-XMD DEPLOY',
-                    body: 'Fast • Free • Secure',
-                    mediaType: 1,
-                    renderLargerThumbnail: true,
-                    thumbnailUrl: 'https://i.imgur.com/8amqBSN.jpeg',
-                    sourceUrl: 'https://jampanbot.vercel.app'
+                        contextInfo: {
+                            externalAdReply: {
+                                title: '🚀 JAMPAN-XMD DEPLOY',
+                                body: 'Fast • Free • Secure',
+                                mediaType: 1,
+                                renderLargerThumbnail: true,
+                                thumbnailUrl: 'https://i.imgur.com/8amqBSN.jpeg',
+                                sourceUrl: 'https://jampanbot.vercel.app'
+                            }
+                        }
+                    }, { quoted: m });
+
+                } catch (err) {
+                    console.log(err);
+                    await replyWithStyle(sock, remoteJid, '❌ Repo command failed.', m);
                 }
             }
-        }, { quoted: m });
-
-    } catch (err) {
-        console.log(err);
-
-        await replyWithStyle(
-            sock,
-            remoteJid,
-            '❌ Repo command failed.',
-            m
-        );
-    }
-}
-break;
+            break;
 
             // ============================================
             // 🎨 ADVANCED AI LOGO & TEXT GRAPHIC ENGINE (MULTI-TEMPLATE)
@@ -1570,7 +1338,6 @@ break;
             case 'greenneon': case 'glitch': case 'devil': case 'boom': case 'water': case 'snow':
             case 'transformer': case 'thunder': case 'harrypotter': case 'whitegold': case 'thor':
             case 'neon': case 'gold': case 'purple': case 'arena': case 'write': case 'meme': case 'url': {
-                
                 try {
                     const targetText = text.trim();
                     if (!targetText) {
@@ -1580,9 +1347,8 @@ break;
                     await react('🎨');
                     await sock.sendMessage(remoteJid, { text: `🎨 *JAMPAN-XMD AI is compounding your "${command}" graphic template for "${targetText}"...*` }, { quoted: m });
 
-                    // Dynamically structural prompt generation based on what command the user typed
                     let aiPrompt = `A high-quality premium professional 3D typography logo design texturing the word "${targetText}". `;
-                    
+
                     if (command === 'hacker') aiPrompt += `The text should be embedded in a dark cyber hacker theme environment, matrix green binary codes background, anonymous neon lighting style, realistic render, 8k resolution.`;
                     else if (command === 'neonlight' || command === 'neon') aiPrompt += `The text should be a glowing vibrant electric neon light sign on a dark textured brick wall background.`;
                     else if (command === 'greenneon') aiPrompt += `The text should be glowing in intense alien matrix green neon lights, futuristic cyberpunk concept.`;
@@ -1601,10 +1367,8 @@ break;
                         aiPrompt += `The theme of the graphic artwork must be based on a premium "${command}" concept, high quality cinematic render, 4k.`;
                     }
 
-                    // Routing the prompt to David Cyril's DALL-E AI endpoint
                     const imageUrl = `https://apis.davidcyril.name.ng/endpoints/ai/dalle?q=${encodeURIComponent(aiPrompt)}`;
 
-                    // Dispatching generated AI image artwork inside our master layout
                     await sock.sendMessage(remoteJid, {
                         image: { url: imageUrl },
                         caption: `╭━━━〔 🎨 *AI GRAPHIC GENERATOR* 〕━━━⬣
@@ -1632,12 +1396,10 @@ break;
                 }
             }
             break;
-            
-   case 'hack': {
 
-await react('☠️')
-
-await replyWithStyle(sock, remoteJid, `
+            case 'hack': {
+                await react('☠️');
+                await replyWithStyle(sock, remoteJid, `
 ╭━━〔 ☠️ HACK NODE 〕━━⬣
 ┃
 ┃ ⚡ Accessing target...
@@ -1646,18 +1408,13 @@ await replyWithStyle(sock, remoteJid, `
 ┃ 🔓 Root access granted
 ┃
 ╰━━〔 JAMPAN-XMD 〕━━⬣
-`, m)
+`, m);
+            }
+            break;
 
-}
-break;
-
-
-
-case 'matrix': {
-
-await react('🧠')
-
-await replyWithStyle(sock, remoteJid, `
+            case 'matrix': {
+                await react('🧠');
+                await replyWithStyle(sock, remoteJid, `
 1010101010101010
 
 ⚡ MATRIX NODE ACTIVE
@@ -1666,18 +1423,13 @@ await replyWithStyle(sock, remoteJid, `
 > Identity hidden successfully.
 
 ☠️ JAMPAN-XMD
-`, m)
+`, m);
+            }
+            break;
 
-}
-break;
-
-
-
-case 'darkweb': {
-
-await react('🌑')
-
-await replyWithStyle(sock, remoteJid, `
+            case 'darkweb': {
+                await react('🌑');
+                await replyWithStyle(sock, remoteJid, `
 ╭━━〔 🌑 DARK WEB 〕━━⬣
 ┃
 ┃ ☠️ Hidden tunnel connected
@@ -1685,18 +1437,13 @@ await replyWithStyle(sock, remoteJid, `
 ┃ 🔥 Anonymous access granted
 ┃
 ╰━━〔 SYSTEM ONLINE 〕━━⬣
-`, m)
+`, m);
+            }
+            break;
 
-}
-break;
-
-
-
-case 'system': {
-
-await react('⚡')
-
-await replyWithStyle(sock, remoteJid, `
+            case 'system': {
+                await react('⚡');
+                await replyWithStyle(sock, remoteJid, `
 ╭━━〔 ⚡ SYSTEM INFO 〕━━⬣
 ┃
 ┃ 💻 CPU : ONLINE
@@ -1706,28 +1453,22 @@ await replyWithStyle(sock, remoteJid, `
 ┃ ☠️ SECURITY : ENABLED
 ┃
 ╰━━〔 JAMPAN-XMD 〕━━⬣
-`, m)
+`, m);
+            }
+            break;
 
-}
-break;
-
-
-
-case 'anonymous': {
-
-await react('👤')
-
-await replyWithStyle(sock, remoteJid, `
+            case 'anonymous': {
+                await react('👤');
+                await replyWithStyle(sock, remoteJid, `
 ☠️ Anonymous mode enabled
 
 > Identity masked successfully.
 > Signal encrypted.
 
 ⚡ JAMPAN-XMD
-`, m)
-
-}
-break;
+`, m);
+            }
+            break;
 
             // ============================================
             // 📡 HIGH-SPEED JID EXTRACTOR NODE (GROUP & CHANNEL)
@@ -1738,7 +1479,6 @@ break;
                     await react('🆔');
                     const link = args[0];
 
-                    // If the user didn't provide any link
                     if (!link) {
                         return await replyWithStyle(
                             sock, 
@@ -1748,16 +1488,11 @@ break;
                         );
                     }
 
-                    // Let the user know the node is scanning the link
                     await sock.sendPresenceUpdate('composing', remoteJid);
 
-                    // --- PART 1: WHATSAPP GROUP LINK ---
                     if (link.includes("chat.whatsapp.com")) {
                         try {
-                            // Extract the invite code, ignoring tracking parameters like ?src=
                             const code = link.split("chat.whatsapp.com/")[1].split("?")[0]; 
-
-                            // Fetch group details from WhatsApp servers
                             const metadata = await sock.groupGetInviteInfo(code);
                             const creationDate = new Date(metadata.creation * 1000).toLocaleString('en-US');
                             const groupOwner = metadata.owner ? `${metadata.owner.split('@')[0]}` : 'Unknown';
@@ -1793,13 +1528,9 @@ break;
                             await replyWithStyle(sock, remoteJid, "❌ *Failed to fetch Group JID.*\n\nEnsure the link is valid and active.", m);
                         }
                     } 
-                    // --- PART 2: WHATSAPP CHANNEL / NEWSLETTER LINK ---
                     else if (link.includes("whatsapp.com/channel")) {
                         try {
-                            // Extract the channel code, ignoring tracking parameters
                             const code = link.split("whatsapp.com/channel/")[1].split("?")[0];
-
-                            // Fetch channel metadata via Baileys built-in function
                             const channelMetadata = await sock.newsletterInfoWithInvite(code);
                             const subscribersCount = channelMetadata.subscribers || 'Hidden/Unknown';
 
@@ -1832,7 +1563,6 @@ break;
                             await replyWithStyle(sock, remoteJid, "❌ *Failed to fetch Channel JID.*\n\nEnsure the channel link is active and valid.", m);
                         }
                     } 
-                    // --- IF LINK IS INVALID ---
                     else {
                         await replyWithStyle(sock, remoteJid, "⚠️ *The link provided is neither a valid WhatsApp Group nor a Channel link!*", m);
                     }
@@ -1843,8 +1573,8 @@ break;
                 }
             }
             break;
-            
-                                                                                                                                                             // ================================
+
+            // ================================
             // PROFILE PICTURE RETRIEVER
             // ================================
             case 'pp':
