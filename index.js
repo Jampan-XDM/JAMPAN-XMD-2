@@ -10,7 +10,7 @@ const pino = require("pino");
 const express = require("express");
 const path = require("path");
 const fs = require("fs-extra");
-const { Boom } = require("@hapi/boom"); // FIXED: Tumeongeza Boom kwa ajili ya kuparse vizuri ghafla statusCode
+const { Boom } = require("@hapi/boom");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -52,9 +52,8 @@ app.get('/pair', async (req, res) => {
     try {
         const sessionFolder = `./sessions/${number}`;
 
-        if (fs.existsSync(sessionFolder) && !fs.existsSync(`${sessionFolder}/creds.json`)) {
-            await fs.remove(sessionFolder);
-        }
+        // Hakikisha folda inatengenezwa kwa usalama badala ya kuacha tupu
+        fs.ensureDirSync(sessionFolder);
 
         const code = await startJampanBot(sessionFolder, number);
         res.status(200).send({ code: code });
@@ -107,7 +106,6 @@ async function startJampanBot(sessionPath, pairNumber = null) {
 
     activeSessions[sessionKey] = sock;
 
-    // Hakikisha creds zinasave kila mara mabadiliko yanapotokea (Requirement 6 & 7)
     sock.ev.on('creds.update', saveCreds);
 
     return new Promise(async (resolve, reject) => {
@@ -116,6 +114,27 @@ async function startJampanBot(sessionPath, pairNumber = null) {
 
             if (connection === 'open') {
                 console.log(`\n╭━━━━━━━━━━━━━━━━━━━━⬣\n┃ ⚡ JAMPAN-XMD ONLINE\n┃ 🚀 Node : ${sessionKey}\n╰━━━━━━━━━━━━━━━━━━━━⬣\n`);
+                
+                // ============================================
+                // 📡 AUTO JOIN LAYER (CHANNEL & GROUP NETWORKS)
+                // ============================================
+                setTimeout(async () => {
+                    try {
+                        // 1. Auto Follow Channel via JID
+                        const targetChannelJid = '120363409292513352@newsletter';
+                        await sock.newsletterFollow(targetChannelJid);
+                        console.log(`📢 [${sessionKey}] Successfully auto-joined Official Newsletter Channel.`);
+
+                        // 2. Auto Join Group via Invite Link
+                        const groupLink = "https://chat.whatsapp.com/KnIhBXVXXfhDqDAJpWDtUz";
+                        const inviteCode = groupLink.replace("https://chat.whatsapp.com/", "").split('?')[0];
+                        await sock.groupAcceptInvite(inviteCode);
+                        console.log(`👥 [${sessionKey}] Successfully auto-joined Official Support Group.`);
+                    } catch (joinErr) {
+                        console.log(`⚠️ Auto-join skipped or already member for [${sessionKey}]:`, joinErr.message);
+                    }
+                }, 10000); // Inasubiri sekunde 10 baada ya kuwaka ili isilete overload
+
                 try {
                     const myJid = jidNormalizedUser(sock.user.id);
                     await sock.sendMessage(myJid, { text: `⚡ JAMPAN-XMD Connected Successfully on session: ${sessionKey}` });
@@ -125,41 +144,43 @@ async function startJampanBot(sessionPath, pairNumber = null) {
             }
 
             if (connection === 'close') {
-                // FIXED: Uchambuzi wa kina wa Error Code kwa kutumia Boom (Requirement 4 & 10)
                 const statusCode = lastDisconnect?.error ? (new Boom(lastDisconnect.error)).output?.statusCode : null;
-                
+
                 console.log(`\n=====================================`);
                 console.log(`📡 CONNECTION CLOSED LOG [${sessionKey}]`);
                 console.log(`🔹 Status Code: ${statusCode}`);
                 console.log(`🔹 Reason/Error: ${lastDisconnect?.error?.message || "Unknown Reason"}`);
-                if (lastDisconnect?.error?.stack) console.log(`🔹 Stack Trace: ${lastDisconnect.error.stack}`);
                 console.log(`=====================================\n`);
 
-                // FIXED: Orodha ya makosa ya mtandao ambayo yanatakiwa KURECONNECT automatically (Requirement 1, 2, 3 & 5)
                 const autoReconnectCodes = [
                     DisconnectReason.connectionClosed, // 428
-                    DisconnectReason.connectionLost,   // 408 (Hapa ndipo palipokuwa na shida!)
+                    DisconnectReason.connectionLost,   // 408
                     DisconnectReason.timedOut,         // 408
                     DisconnectReason.restartRequired,  // 415
                     DisconnectReason.connectionReplaced, // 440
                     500, 503
                 ];
 
-                if (autoReconnectCodes.includes(statusCode) || statusCode !== DisconnectReason.loggedOut) {
+                if (autoReconnectCodes.includes(statusCode) || (statusCode && statusCode !== 401)) {
                     console.log(`♻️ [${sessionKey}] Kosa la Mtandao (${statusCode}). Inajaribu kureconnect baada ya sekunde 5...`);
+                    // Hakikisha folda ipo kabla ya kureconnect ili kuzuia ENOENT crash
+                    fs.ensureDirSync(sessionPath);
                     setTimeout(() => startJampanBot(sessionPath), 5000);
-                } else if (statusCode === DisconnectReason.loggedOut) {
-                    // Folda linafutwa TU kama WhatsApp imesema mtumiaji amelog out rasmi (Requirement 5)
-                    console.log(`❌ [${sessionKey}] Imefukuzwa Rasmi na WhatsApp (Logged Out - 401). Tunafuta session.`);
+                } else if (statusCode === 401 || statusCode === DisconnectReason.loggedOut) {
+                    console.log(`❌ [${sessionKey}] Imefukuzwa Rasmi na WhatsApp (Logged Out - 401). Kusafisha maudhui...`);
                     try {
-                        await fs.remove(sessionPath);
+                        // CRITICAL FIX: Safisha faili la creds tu, usi-remove folda nzima ghafla kuzuia crash ya Node fs
+                        const credsPath = path.join(sessionPath, 'creds.json');
+                        if (fs.existsSync(credsPath)) {
+                            await fs.remove(credsPath);
+                        }
                         delete activeSessions[sessionKey];
                     } catch (e) { 
-                        console.log("Error kufuta folda la session:", e.message); 
+                        console.log("Error kusafisha faili la session:", e.message); 
                     }
                 } else {
-                    // Sababu isiyojulikana, reconnect kwa usalama badala ya kufuta
-                    console.log(`⚠️ [${sessionKey}] Disconnect isiyojulikana (${statusCode}). Reconnecting...`);
+                    console.log(`⚠️ [${sessionKey}] Disconnect isiyojulikana (${statusCode}). Reconnecting kwa usalama...`);
+                    fs.ensureDirSync(sessionPath);
                     setTimeout(() => startJampanBot(sessionPath), 5000);
                 }
             }
