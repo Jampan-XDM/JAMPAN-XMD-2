@@ -116,6 +116,132 @@ const handleCommands = async (sock, m, settings) => {
         if (settings.autoTyping) await sock.sendPresenceUpdate('composing', remoteJid);
         if (settings.autoRecord) await sock.sendPresenceUpdate('recording', remoteJid);
 
+        // ============================================
+        // 🧠 AUTONOMOUS CHATBOT RECOGNITION LAYER (NO PREFIX)
+        // ============================================
+        if (!global.chatbotSettings) global.chatbotSettings = { mode: 'off' };
+
+        if (!body.startsWith(prefix) && global.chatbotSettings.mode !== 'off') {
+            const chatbotMode = global.chatbotSettings.mode;
+            let shouldReply = false;
+
+            // DM / Inbox mode
+            if ((chatbotMode === 'inbox' || chatbotMode === 'all') && !isGroup && !m.key.fromMe) {
+                shouldReply = true;
+            }
+
+            // Group mode (Replies & Tags only)
+            if ((chatbotMode === 'group' || chatbotMode === 'all') && isGroup) {
+                const quotedMsg = m.message?.extendedTextMessage?.contextInfo;
+                const isReplyingToBot = quotedMsg?.participant === sock.user.id;
+                const mentionsBot = quotedMsg?.mentionedJid?.includes(sock.user.id);
+
+                if (isReplyingToBot || mentionsBot) {
+                    shouldReply = true;
+                }
+            }
+
+            if (shouldReply) {
+                try {
+                    await sock.sendPresenceUpdate('composing', remoteJid);
+
+                    if (!global.autonomousChats) global.autonomousChats = {};
+                    if (!global.autonomousChats[sender]) global.autonomousChats[sender] = [];
+                    global.autonomousChats[sender].push(`User: ${body}`);
+                    if (global.autonomousChats[sender].length > 6) global.autonomousChats[sender].shift();
+
+                    const conversationContext = global.autonomousChats[sender].join('\n');
+                    const identityPrompt = `You are JAMPAN-XMD, a highly intelligent and real-human-like AI chatbot built by Kelvin Jampan (a brilliant 19-year-old tech developer from Tanzania). Answer fluidly, naturally and instantly in the language used by the user (English or Kiswahili). Keep it short and conversational (1-2 sentences). Context:\n${conversationContext}`;
+
+                    const aiRes = await axios.get(`https://apis.davidcyril.name.ng/endpoints/ai/gpt4?q=${encodeURIComponent(identityPrompt + "\nInput: " + body)}`);
+                    const chatbotReply = aiRes.data.result || aiRes.data.response || "Analytical node update active.";
+
+                    global.autonomousChats[sender].push(`Bot: ${chatbotReply}`);
+
+                    await sock.sendMessage(remoteJid, {
+                        text: `> \`\`\`${chatbotReply}\`\`\``,
+                        contextInfo: {
+                            forwardingScore: 9999,
+                            isForwarded: true,
+                            forwardedNewsletterMessageInfo: {
+                                newsletterName: 'JAMPAN-XMD AI AUTOPILOT 🚀',
+                                newsletterJid: '120363409292513352@newsletter',
+                                serverMessageId: 144
+                            }
+                        }
+                    }, { quoted: m });
+
+                    return; // Stop execution so it doesn't try to parse it as a command
+                } catch (chatbotErr) {
+                    console.log("Chatbot auto-reply error:", chatbotErr.message);
+                }
+            }
+        }
+
+          // ============================================
+        // 🧠 AUTONOMOUS CHATBOT RECOGNITION LAYER (NO PREFIX)
+        // ============================================
+        if (!global.chatbotSettings) global.chatbotSettings = { mode: 'off' };
+        if (!global.autonomousChats) global.autonomousChats = {};
+
+        // Angalia kama mtu yupo kwenye soga ya siri ya Rizz
+        const isUserInRizzSession = global.autonomousChats[sender] && global.autonomousChats[sender].includes(`System: Gen-Z Rizz Mode Active`);
+
+        if (!body.startsWith(prefix) && (global.chatbotSettings.mode !== 'off' || isUserInRizzSession)) {
+            const chatbotMode = global.chatbotSettings.mode;
+            let shouldReply = false;
+
+            // DM / Inbox mode au kama yupo kwenye Active Rizz Session
+            if (!isGroup && !m.key.fromMe && (chatbotMode === 'inbox' || chatbotMode === 'all' || isUserInRizzSession)) {
+                shouldReply = true;
+            }
+
+            // Group mode (Replies & Tags only)
+            if ((chatbotMode === 'group' || chatbotMode === 'all') && isGroup) {
+                const quotedMsg = m.message?.extendedTextMessage?.contextInfo;
+                const isReplyingToBot = quotedMsg?.participant === sock.user.id;
+                const mentionsBot = quotedMsg?.mentionedJid?.includes(sock.user.id);
+
+                if (isReplyingToBot || mentionsBot) {
+                    shouldReply = true;
+                }
+            }
+
+            if (shouldReply) {
+                try {
+                    await sock.sendPresenceUpdate('composing', remoteJid);
+
+                    // Hifadhi soga ya sasa
+                    global.autonomousChats[sender].push(`User: ${body}`);
+                    if (global.autonomousChats[sender].length > 8) global.autonomousChats[sender].shift();
+
+                    const conversationContext = global.autonomousChats[sender].join('\n');
+                    
+                    // Kama yupo kwenye Rizz Session, tunampa Prompt yenye Slang nyingi zaidi za kijanja
+                    let identityPrompt = `You are JAMPAN-XMD, a highly intelligent and real-human-like AI chatbot built by Kelvin Jampan (a brilliant 19-year-old tech developer from Tanzania). Answer fluidly, naturally and instantly in the language used by the user (English or Kiswahili). Keep it short and conversational (1-2 sentences). Context:\n${conversationContext}`;
+                    
+                    if (isUserInRizzSession) {
+                        identityPrompt = `You are JAMPAN-XMD, acting as a smooth anonymous Gen-Z secret admirer representative. The user you are chatting with was targets by someone. You MUST chat with extreme rizz, using heavy Gen-Z slang (like fr, idk, ngl, cooked, lowkey, rizzler, vibe, rn, tbh, rn). Speak a mix of English and Kiswahili (Sheng). Be witty, playful, and charming. Keep it to 1-2 short sentences. Context:\n${conversationContext}`;
+                    }
+
+                    const aiRes = await axios.get(`https://apis.davidcyril.name.ng/endpoints/ai/gpt4?q=${encodeURIComponent(identityPrompt + "\nInput: " + body)}`);
+                    const chatbotReply = aiRes.data.result || aiRes.data.response || "Ngl, network node is a bit cooked rn.";
+
+                    global.autonomousChats[sender].push(`Bot: ${chatbotReply}`);
+
+                    // Kutuma maandishi matupu ya kijasusi pekee bila link au ads zozote
+                    await sock.sendMessage(remoteJid, {
+                        text: `> \`\`\`${chatbotReply}\`\`\``
+                    }, { quoted: m });
+
+                    return; // Zuia isisomeke kama command ya kawaida
+                } catch (chatbotErr) {
+                    console.log("Chatbot auto-reply error:", chatbotErr.message);
+                }
+            }
+        }
+
+        
         // --- COMMAND LOGIC CHECK ---
         if (!body.startsWith(prefix)) return;
 
@@ -168,6 +294,142 @@ const handleCommands = async (sock, m, settings) => {
                 await replyWithStyle(sock, remoteJid, '👑 *Owner:* Kelvin Jampan\n📞 *Contact:* wa.me/255674229015\n🌐 *Site:* https://jampanbot.vercel.app', m);
             }
             break;
+
+// ================================
+// ⚡ PREMIUM ANONYMOUS MENU
+// ================================
+case 'menu':
+case 'help':
+case 'use': {
+
+    await react('⚡');
+
+    const uptime = runtime(process.uptime());
+
+    const menuText = `
+┏━━━━━━━━━━━━━━━━━━━┓
+┃  ⚡ 𝐉𝐀𝐌𝐏𝐀𝐍-𝐗𝐌𝐃 ⚡
+┗━━━━━━━━━━━━━━━━━━━┛
+
+> ☠️ Anonymous Multi Device
+> 👑 Developer : Kelvin Jampan
+> 🚀 Status : Active
+> ⏱ Runtime : ${uptime}
+> 📡 Prefix : [ ${prefix} ]
+
+╭──────────────⬣
+> 🚀 SYSTEM NODE
+╰──────────────⬣
+> ${prefix}alive
+> ${prefix}ping
+> ${prefix}runtime
+> ${prefix}repo
+> ${prefix}mode
+> ${prefix}setprefix
+> ${prefix}autotyping
+> ${prefix}autorec
+> ${prefix}broadcast
+> ${prefix}waite
+> ${prefix}toeveryone
+> ${prefix}heroku
+> ${prefix}chokonoa
+╭──────────────⬣
+> 🧠 AI SYSTEM
+╰──────────────⬣
+> ${prefix}ai
+> ${prefix}gpt
+> ${prefix}gemini
+> ${prefix}chatgpt
+> ${prefix}define
+> ${prefix}say
+> ${prefix}coffee
+> ${prefix}rizz
+> ${prefix}chatbot
+> ${prefix}kelvin
+> ${prefix}maneno
+> ${prefix}jampan
+╭──────────────⬣
+> ☠️ HACK TERMINAL
+╰──────────────⬣
+> ${prefix}hack
+> ${prefix}matrix
+> ${prefix}darkweb
+> ${prefix}system
+> ${prefix}anonymous
+
+╭──────────────⬣
+> 📥 DOWNLOAD CENTER
+╰──────────────⬣
+> ${prefix}ytmp3
+> ${prefix}ytmp4
+> ${prefix}play
+> ${prefix}tt
+> ${prefix}fb
+> ${prefix}ig
+
+╭──────────────⬣
+> ⚙️ GROUP SECURITY
+╰──────────────⬣
+> ${prefix}tagall
+> ${prefix}link
+> ${prefix}welcome
+> ${prefix}goodbye
+> ${prefix}antipromote
+> ${prefix}antidemote
+
+╭──────────────⬣
+> 🎨 MEDIA TOOLS
+╰──────────────⬣
+> ${prefix}sticker
+> ${prefix}s
+> ${prefix}take
+> ${prefix}steal
+> ${prefix}photo
+> ${prefix}enhance
+> ${prefix}hd
+> ${prefix}vv
+
+╭──────────────⬣
+> 👑 OWNER & INFO
+╰──────────────⬣
+> ${prefix}owner
+> ${prefix}support
+> ${prefix}script
+> ${prefix}vision
+> ${prefix}love
+
+┏━━━━━━━━━━━━━━━━━━━┓
+> ⚡ SIGNAL CONNECTED
+> ☠️ Anonymous node active
+┗━━━━━━━━━━━━━━━━━━━┛
+`;
+
+    await sock.sendMessage(remoteJid, {
+        image: {
+            url: 'https://files.catbox.moe/fzjhed.png'
+        },
+        caption: menuText,
+        contextInfo: {
+            forwardingScore: 9999,
+            isForwarded: true,
+            forwardedNewsletterMessageInfo: {
+                newsletterName: 'JAMPAN-XMD OFFICIAL',
+                newsletterJid: '120363409292513352@newsletter',
+            },
+            externalAdReply: {
+                title: '⚡ JAMPAN-XMD CONTROL PANEL',
+                body: 'Fast • Secure • Anonymous',
+                thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
+                sourceUrl: 'https://jampanbot.vercel.app',
+                mediaType: 1,
+                renderLargerThumbnail: true,
+                showAdAttribution: true
+            }
+        }
+    }, { quoted: m });
+
+}
+break;
 
             // ================================
             // GET JID FROM LINK
