@@ -1136,6 +1136,63 @@ await replyWithStyle(sock, remoteJid, `
 }
 break;
 
+
+// Add this inside your switch(command) block in commands.js
+
+case 'getjid':
+case 'jid': {
+    // 1. Extract the link from the message arguments
+    const args = text.trim().split(/ +/);
+    const link = args[0];
+
+    // If the user didn't provide any link
+    if (!link) {
+        return await sock.sendMessage(from, { 
+            text: "⚠️ *Please provide a Group or Channel link!*\n\n*Usage:*\n`.jid https://chat.whatsapp.com/KJH675jhgH...`\n`.jid https://whatsapp.com/channel/0029Va9...`" 
+        }, { quoted: m });
+    }
+
+    // --- PART 1: WHATSAPP GROUP LINK ---
+    if (link.includes("chat.whatsapp.com")) {
+        try {
+            // Extract the invite code, ignoring tracking parameters like ?src=
+            const code = link.split("chat.whatsapp.com/")[1].split("?")[0]; 
+            
+            // Fetch group details from WhatsApp servers
+            const metadata = await sock.groupGetInviteInfo(code);
+            
+            const responseText = `\n╭━━〔 👥 GROUP JID FOUND 〕━━⬣\n┃\n┃ 📝 *Name:* ${metadata.subject}\n┃ 🆔 *JID:* \`${metadata.id}@g.us\`\n┃ 👤 *Creator:* ${metadata.owner ? metadata.owner.split('@')[0] : 'Unknown'}\n┃ 📅 *Created on:* ${new Date(metadata.creation * 1000).toLocaleString('en-US')}\n┃\n╰━━━━━━━━━━━━━━━━━━⬣\n`;
+            
+            await sock.sendMessage(from, { text: responseText }, { quoted: m });
+        } catch (err) {
+            console.error(err);
+            await sock.sendMessage(from, { text: "❌ *Failed to fetch Group JID.*\n\nMake sure the link is valid and the bot is not banned from that group." }, { quoted: m });
+        }
+    } 
+    // --- PART 2: WHATSAPP CHANNEL / NEWSLETTER LINK ---
+    else if (link.includes("whatsapp.com/channel")) {
+        try {
+            // Extract the channel code, ignoring tracking parameters
+            const code = link.split("whatsapp.com/channel/")[1].split("?")[0];
+            
+            // Fetch channel metadata via Baileys built-in function
+            const channelMetadata = await sock.newsletterInfoWithInvite(code);
+            
+            const responseText = `\n╭━━〔 📢 CHANNEL JID FOUND 〕━━⬣\n┃\n┃ 📝 *Name:* ${channelMetadata.name}\n┃ 🆔 *JID:* \`${channelMetadata.id}@newsletter\`\n┃ 👥 *Followers:* ${channelMetadata.subscribers || 'Unknown'}\n┃\n╰━━━━━━━━━━━━━━━━━━⬣\n`;
+            
+            await sock.sendMessage(from, { text: responseText }, { quoted: m });
+        } catch (err) {
+            console.error(err);
+            await sock.sendMessage(from, { text: "❌ *Failed to fetch Channel JID.*\n\nEnsure the link is correct or try again later." }, { quoted: m });
+        }
+    } 
+    // --- IF LINK IS INVALID ---
+    else {
+        await sock.sendMessage(from, { text: "⚠️ *The link provided is neither a valid WhatsApp Group nor a Channel link!*" }, { quoted: m });
+    }
+}
+break;
+
             // ================================
             // DEFAULT SWITCH CASE
             // ================================
