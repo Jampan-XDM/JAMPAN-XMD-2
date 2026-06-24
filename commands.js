@@ -212,6 +212,7 @@ case 'use': {
 > ${prefix}waite
 > ${prefix}toeveryone
 > ${prefix}heroku
+> ${prefix}chokonoa
 
 ╭──────────────⬣
 > 🧠 AI SYSTEM
