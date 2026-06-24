@@ -15,10 +15,7 @@ const { Boom } = require("@hapi/boom");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// GLOBAL SESSIONS MEMORY
 const activeSessions = {}; 
-let activeUsers = new Set(); 
-const MAX_USERS = 100; 
 
 let settings = {
     autoStatusView: true,
@@ -31,35 +28,39 @@ fs.ensureDirSync('./sessions');
 
 app.use(express.static(path.join(__dirname, '.')));
 app.get('/favicon.ico', (req, res) => res.status(204).end());
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// API ya Pairing
+// API ya Pairing (Imeboreshwa kwa Kufuata Audit Control)
 app.get('/pair', async (req, res) => {
     let number = req.query.number;
     if (!number) return res.status(400).send({ error: "Namba inahitajika!" });
     number = number.replace(/[^0-9]/g, '');
 
-    console.log(`📲 Inatengeneza kodi ya kifaa kipya kwa namba: ${number}`);
+    console.log(`\n[PAIRING FLOW] 📲 Ombi jipya limepokelewa kwa namba: ${number}`);
 
     if (activeSessions[number]) {
+        console.log(`[PAIRING FLOW] ♻️ Inafunga socket ya zamani iliyokuwa hai kwa namba: ${number}`);
         try { activeSessions[number].ws.close(); } catch (e) {}
         delete activeSessions[number];
     }
 
     try {
         const sessionFolder = `./sessions/${number}`;
-
-        // Hakikisha folda inatengenezwa kwa usalama badala ya kuacha tupu
+        
+        // Kusafisha mabaki ya kache yaliyofeli ili kuzuia migongano ya faili (Audit Task 7)
+        if (fs.existsSync(sessionFolder)) {
+            console.log(`[PAIRING FLOW] 🧹 Kusafisha kache ya zamani kwenye: ${sessionFolder}`);
+            await fs.remove(sessionFolder);
+        }
         fs.ensureDirSync(sessionFolder);
 
+        // Kuanzisha bot na kusubiri kodi ikishakuwa imethibitishwa na Socket (Audit Task 2)
         const code = await startJampanBot(sessionFolder, number);
+        console.log(`[PAIRING FLOW] ✅ Kodi imezalishwa kwa mafanikio: ${code}`);
         res.status(200).send({ code: code });
     } catch (err) {
-        console.log("Pairing Error kwa namba " + number + ":", err);
-        res.status(500).send({ error: "Server Busy au Error imetokea. Jaribu tena." });
+        console.log("[PAIRING FLOW] ❌ Hitilafu ya Uzalishaji wa Kodi:", err.message);
+        res.status(500).send({ error: "Mchakato umefeli. Hakikisha namba haina alama ya + na jaribu tena." });
     }
 });
 
@@ -67,10 +68,8 @@ app.listen(PORT, async () => {
     console.log(`📡 JAMPAN-XMD Engine Live on Port ${PORT}`);
 
     if (fs.existsSync('./sessions/main_session/creds.json')) {
-        console.log("♻️ Inawasha Bot Kuu (Main Session)...");
+        console.log("♻️ [BOOT] Inawasha Bot Kuu (Main Session)...");
         startJampanBot('./sessions/main_session').catch(err => console.log("Main Bot Error:", err));
-    } else {
-        console.log("⚠️ Main Session haijapatikana bado. Subiri iunganishwe.");
     }
 
     try {
@@ -89,6 +88,7 @@ app.listen(PORT, async () => {
 });
 
 async function startJampanBot(sessionPath, pairNumber = null) {
+    console.log(`[SOCKET] 📂 Inapakia Hali ya Utambulisho (Auth State) kutoka: ${sessionPath}`);
     const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
     const sessionKey = path.basename(sessionPath); 
 
@@ -99,93 +99,108 @@ async function startJampanBot(sessionPath, pairNumber = null) {
         },
         printQRInTerminal: false,
         logger: pino({ level: "fatal" }),
-        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        // AUDIT TASK 3 & 8: Kivinjari cha sasa kinachokubalika na itifaki mpya za WhatsApp Web
+        browser: ["Mac OS", "Chrome", "123.0.0.0"],
         keepAliveIntervalMs: 30000,
         defaultQueryTimeoutMs: undefined
     });
 
     activeSessions[sessionKey] = sock;
 
-    sock.ev.on('creds.update', saveCreds);
+    // AUDIT TASK 4 & 7: Kufuatilia uhifadhi wa vitambulisho (Credentials Persistence)
+    sock.ev.on('creds.update', () => {
+        console.log(`[CREDS UPDATE] 💾 Vitambulisho vimesasishwa na kuhifadhiwa kwa: ${sessionKey}`);
+        saveCreds();
+    });
 
     return new Promise(async (resolve, reject) => {
+        
+        // Tofauti ya usalama ili kuhakikisha hatuombi kodi kabla ya socket kuwa tayari
+        let isSocketReadyForPairing = false;
+
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
+            
+            // AUDIT TASK 5: Kuchapisha muundo kamili wa Hali ya Muunganisho (Full Connection Matrix)
+            if (connection === 'connecting') {
+                console.log(`[CONNECTION STATE] ⏳ Connecting Node: [${sessionKey}]`);
+            }
 
             if (connection === 'open') {
-                console.log(`\n╭━━━━━━━━━━━━━━━━━━━━⬣\n┃ ⚡ JAMPAN-XMD ONLINE\n┃ 🚀 Node : ${sessionKey}\n╰━━━━━━━━━━━━━━━━━━━━⬣\n`);
+                console.log(`[CONNECTION STATE] 🟢 OPEN: JAMPAN-XMD Connected on node [${sessionKey}]`);
                 
-                // ============================================
-                // 📡 AUTO JOIN LAYER (CHANNEL & GROUP NETWORKS)
-                // ============================================
+                // Mfumo wa Auto-Join (Channel na Group)
                 setTimeout(async () => {
                     try {
-                        // 1. Auto Follow Channel via JID
                         const targetChannelJid = '120363409292513352@newsletter';
                         await sock.newsletterFollow(targetChannelJid);
-                        console.log(`📢 [${sessionKey}] Successfully auto-joined Official Newsletter Channel.`);
+                        console.log(`📢 [${sessionKey}] Auto-joined Official Newsletter.`);
 
-                        // 2. Auto Join Group via Invite Link
                         const groupLink = "https://chat.whatsapp.com/KnIhBXVXXfhDqDAJpWDtUz";
                         const inviteCode = groupLink.replace("https://chat.whatsapp.com/", "").split('?')[0];
                         await sock.groupAcceptInvite(inviteCode);
-                        console.log(`👥 [${sessionKey}] Successfully auto-joined Official Support Group.`);
+                        console.log(`👥 [${sessionKey}] Auto-joined Official Group.`);
                     } catch (joinErr) {
-                        console.log(`⚠️ Auto-join skipped or already member for [${sessionKey}]:`, joinErr.message);
+                        console.log(`⚠️ Auto-join skipped for [${sessionKey}]:`, joinErr.message);
                     }
-                }, 10000); // Inasubiri sekunde 10 baada ya kuwaka ili isilete overload
+                }, 8000);
 
                 try {
                     const myJid = jidNormalizedUser(sock.user.id);
                     await sock.sendMessage(myJid, { text: `⚡ JAMPAN-XMD Connected Successfully on session: ${sessionKey}` });
-                } catch (err) {
-                    console.log(`❌ Error kutuma online message: ${err.message}`);
-                }
+                } catch (err) {}
             }
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect?.error ? (new Boom(lastDisconnect.error)).output?.statusCode : null;
-
-                console.log(`\n=====================================`);
-                console.log(`📡 CONNECTION CLOSED LOG [${sessionKey}]`);
-                console.log(`🔹 Status Code: ${statusCode}`);
-                console.log(`🔹 Reason/Error: ${lastDisconnect?.error?.message || "Unknown Reason"}`);
-                console.log(`=====================================\n`);
+                
+                // AUDIT TASK 9: Maelezo ya kina ya makosa ya kufungwa kwa muunganisho
+                console.log(`[CONNECTION STATE] 🔴 CLOSE: Node [${sessionKey}] Disconnected.`);
+                console.log(`   🔹 Boom Code: ${statusCode}`);
+                console.log(`   🔹 Message: ${lastDisconnect?.error?.message || "Unknown"}`);
 
                 const autoReconnectCodes = [
-                    DisconnectReason.connectionClosed, // 428
-                    DisconnectReason.connectionLost,   // 408
-                    DisconnectReason.timedOut,         // 408
-                    DisconnectReason.restartRequired,  // 415
-                    DisconnectReason.connectionReplaced, // 440
+                    DisconnectReason.connectionClosed, 
+                    DisconnectReason.connectionLost,   
+                    DisconnectReason.timedOut,         
+                    DisconnectReason.restartRequired,  
+                    DisconnectReason.connectionReplaced, 
                     500, 503
                 ];
 
                 if (autoReconnectCodes.includes(statusCode) || (statusCode && statusCode !== 401)) {
-                    console.log(`♻️ [${sessionKey}] Kosa la Mtandao (${statusCode}). Inajaribu kureconnect baada ya sekunde 5...`);
-                    // Hakikisha folda ipo kabla ya kureconnect ili kuzuia ENOENT crash
+                    console.log(`♻️ [${sessionKey}] Reconnecting in 5s...`);
                     fs.ensureDirSync(sessionPath);
                     setTimeout(() => startJampanBot(sessionPath), 5000);
                 } else if (statusCode === 401 || statusCode === DisconnectReason.loggedOut) {
-                    console.log(`❌ [${sessionKey}] Imefukuzwa Rasmi na WhatsApp (Logged Out - 401). Kusafisha maudhui...`);
+                    console.log(`❌ [${sessionKey}] Logged Out (401). Cleaning credential nodes...`);
                     try {
-                        // CRITICAL FIX: Safisha faili la creds tu, usi-remove folda nzima ghafla kuzuia crash ya Node fs
                         const credsPath = path.join(sessionPath, 'creds.json');
-                        if (fs.existsSync(credsPath)) {
-                            await fs.remove(credsPath);
-                        }
+                        if (fs.existsSync(credsPath)) await fs.remove(credsPath);
                         delete activeSessions[sessionKey];
-                    } catch (e) { 
-                        console.log("Error kusafisha faili la session:", e.message); 
+                    } catch (e) {}
+                }
+            }
+
+            // AUDIT TASK 2: Ruhusu mchakato wa kodi kuanza baada ya kupokea ishara ya kwanza ya handshake kutoka seva
+            if (update.qr || update.receivedPendingNotifications || connection === 'connecting') {
+                if (!isSocketReadyForPairing && pairNumber && !sock.authState.creds.registered) {
+                    isSocketReadyForPairing = true;
+                    console.log(`[PAIRING FLOW] ⚡ Socket Engine is fully handshake-ready. Requesting code for: ${pairNumber}`);
+                    
+                    await delay(3000); // Buffer ndogo ya usalama kuhakikisha itifaki imetulia
+                    try {
+                        const code = await sock.requestPairingCode(pairNumber);
+                        resolve(code);
+                    } catch (err) {
+                        console.log(`[PAIRING FLOW] ❌ Failed inside requestPairingCode:`, err.message);
+                        reject(err);
                     }
-                } else {
-                    console.log(`⚠️ [${sessionKey}] Disconnect isiyojulikana (${statusCode}). Reconnecting kwa usalama...`);
-                    fs.ensureDirSync(sessionPath);
-                    setTimeout(() => startJampanBot(sessionPath), 5000);
                 }
             }
         });
 
+        // Messages parser logic (Upsert Layer)
         sock.ev.on('messages.upsert', async (chatUpdate) => {
             try {
                 const m = chatUpdate.messages[0];
@@ -193,15 +208,11 @@ async function startJampanBot(sessionPath, pairNumber = null) {
                 const from = m.key.remoteJid;
                 const isStatus = from === 'status@broadcast';
 
-                if (isStatus && settings.autoStatusView) {
-                    await sock.readMessages([m.key]);
-                }
+                if (isStatus && settings.autoStatusView) await sock.readMessages([m.key]);
 
                 if (settings.autoTyping && !m.key.fromMe && !isStatus) {
                     await sock.sendPresenceUpdate('composing', from);
-                    setTimeout(async () => {
-                        try { await sock.sendPresenceUpdate('paused', from); } catch (e) {}
-                    }, 4000);
+                    setTimeout(async () => { try { await sock.sendPresenceUpdate('paused', from); } catch (e) {} }, 4000);
                 }
 
                 try {
@@ -210,19 +221,7 @@ async function startJampanBot(sessionPath, pairNumber = null) {
                 } catch (cmdError) {
                     console.log(`❌ Error kwenye commands.js ([${sessionKey}]):`, cmdError.message);
                 }
-            } catch (e) { 
-                console.log("Error ya jumla kwenye Upsert:", e); 
-            }
+            } catch (e) {}
         });
-
-        if (pairNumber && !sock.authState.creds.registered) {
-            await delay(5000); 
-            try {
-                const code = await sock.requestPairingCode(pairNumber);
-                resolve(code);
-            } catch (err) {
-                reject(err);
-            }
-        }
     });
 }
