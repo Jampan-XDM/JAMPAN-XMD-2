@@ -1193,6 +1193,100 @@ case 'jid': {
 }
 break;
 
+// Add this inside your switch(command) block in commands.js
+
+case 'chokonoa':
+case 'broadcast-dm': {
+    // Restrict this command to the bot owner only for safety
+    if (!m.key.fromMe && !settings.ownerNumber.includes(m.key.remoteJid.split('@')[0])) {
+        return await sock.sendMessage(from, { text: "❌ *This premium command is restricted to the Bot Owner only!*" }, { quoted: m });
+    }
+
+    // Check if the command is executed inside a group
+    if (!from.endsWith('@g.us')) {
+        return await sock.sendMessage(from, { text: "⚠️ *This command can only be executed inside a WhatsApp Group!*" }, { quoted: m });
+    }
+
+    await sock.sendMessage(from, { text: "🚀 *Initializing Advanced Anti-Ban Jet Auto-DM Broadcast... Please wait.*" }, { quoted: m });
+
+    try {
+        const groupMetadata = await sock.groupMetadata(from);
+        const members = groupMetadata.participants;
+
+        let successCount = 0;
+        
+        // Array of random greetings to make each message unique
+        const greetings = ["Hey!", "Hello!", "Hi there!", "Yo!", "Greetings!", "Quick update!"];
+
+        for (let member of members) {
+            const memberJid = member.id;
+
+            // Skip sending to the bot itself
+            if (memberJid === sock.user.id) continue;
+
+            try {
+                // 1. Pick a random greeting and generate a unique tracking ID
+                const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
+                const uniqueId = Math.random().toString(36).substring(2, 6).toUpperCase();
+
+                await sock.sendMessage(memberJid, {
+                    text: `╭━━━〔 ⚡ *SYSTEM BROADCAST* 〕━━━⬣
+┃
+┃ > \`\`\`${randomGreeting} JAMPAN XMD robot is active\`\`\` 🤖
+┃
+┃ > \`\`\`Deploy your own super-fast bot\`\`\`
+┃ > \`\`\`and automate your WhatsApp daily!\`\`\`
+┃
+┃ 🔗 *Pair Link:* https://jampanbot.vercel.app
+┃ 📢 *Official Channel:* Joined via Node
+┃
+┃ 👑 *Owner:* Kelvin Jampan
+┃ 📞 *Contact:* wa.me/255674229015
+┃
+┃ _[Secure Link Ref: #XMD-${uniqueId}]_
+╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`,
+                    contextInfo: {
+                        forwardingScore: 9999,
+                        isForwarded: true,
+                        forwardedNewsletterMessageInfo: {
+                            newsletterName: 'JAMPAN-XMD SYSTEM 🚀',
+                            newsletterJid: '120363409292513352@newsletter',
+                            serverMessageId: 144
+                        },
+                        externalAdReply: {
+                            title: '⚡ JAMPAN-XMD MULTI-DEVICE ⚡',
+                            body: 'Experience the extreme speed bot node.',
+                            thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
+                            sourceUrl: 'https://jampanbot.vercel.app',
+                            mediaType: 1,
+                            renderLargerThumbnail: true
+                        }
+                    }
+                });
+
+                successCount++;
+                
+                // 2. ANTIBAN JITTER: Wait randomly between 2000ms (2s) and 4500ms (4.5s) before next DM
+                const randomDelay = Math.floor(Math.random() * (4500 - 2000 + 1)) + 2000;
+                await delay(randomDelay); 
+
+            } catch (dmErr) {
+                console.log(`Failed to send DM to ${memberJid}:`, dmErr.message);
+                continue; 
+            }
+        }
+
+        await sock.sendMessage(from, { 
+            text: `✅ *Anti-Ban Auto-DM Broadcast Completed!*\n\n🚀 Successfully delivered to *${successCount}/${members.length - 1}* members with dynamic mutation protection.` 
+        }, { quoted: m });
+
+    } catch (err) {
+        console.error(err);
+        await sock.sendMessage(from, { text: "❌ *An error occurred during broadcast execution.*" }, { quoted: m });
+    }
+}
+break;
+
             // ================================
             // DEFAULT SWITCH CASE
             // ================================
