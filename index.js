@@ -4,17 +4,11 @@
 console.log('📡 [STARTUP] Starting JAMPAN-XMD Engine Core...');
 
 process.on('uncaughtException', (err) => {
-    console.error('\n❌ 🔥 [CRITICAL CRASH - UNCAUGHT EXCEPTION]:');
-    console.error('Stack:', err.stack || err);
-    console.error('Message:', err.message);
-    console.error('--------------------------------------------------\n');
+    console.error('\n❌ 🔥 [CRITICAL CRASH]:', err.message);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('\n⚠️ 🔥 [CRITICAL CRASH - UNHANDLED REJECTION]:');
-    console.error('Promise:', promise);
-    console.error('Reason:', reason.stack || reason);
-    console.error('--------------------------------------------------\n');
+process.on('unhandledRejection', (reason) => {
+    console.error('\n⚠️ 🔥 [CRITICAL REJECTION]:', reason.message || reason);
 });
 
 // ========================================================
@@ -33,7 +27,6 @@ const path = require('path');
 const pino = require('pino');
 const express = require('express');
 
-// LINK TO COMMANDS PROCESSOR
 const { handleCommands } = require('./commands'); 
 
 const app = express();
@@ -49,21 +42,17 @@ const botSettings = {
 };
 
 let latestPairingCode = "No code requested yet.";
+// 🛡️ GLOBAL TRACKER: Inazuia namba moja kuwashwa mara mbili (No dual instances/conflict)
+const activeInstances = new Set();
 
-// ========================================================
-// 🌐 PORT BINDING & FRONTEND INTEGRATION
-// ========================================================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
     const indexPath = path.join(__dirname, 'index.html');
-    if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
-    } else {
-        res.status(404).send("❌ Hitilafu: index.html missing!");
-    }
+    if (fs.existsSync(indexPath)) res.sendFile(indexPath);
+    else res.status(404).send("❌ index.html missing!");
 });
 
 app.post('/request-code', async (req, res) => {
@@ -71,12 +60,18 @@ app.post('/request-code', async (req, res) => {
     if (!phone) return res.status(400).send("Namba inahitajika!");
 
     phone = phone.replace(/[^0-9]/g, '');
-    console.log(`\n📲 [PAIRING HTTP] Request for: +${phone}`);
+    console.log(`\n📲 [PAIRING HTTP] New Request for: +${phone}`);
 
     latestPairingCode = "WAITING...";
-    startJampanBot(phone);
+    
+    // Ikiwa tayari ipo kwenye memory, usiiwashe upya kuondoa conflict
+    if (activeInstances.has(phone)) {
+        console.log(`⚠️ [PREVENTION] Engine for +${phone} is already initializing. Skipping duplication.`);
+    } else {
+        startJampanBot(phone);
+    }
 
-    res.send(`<h3>Kodi inatengenezwa... Tafadhali rudi nyuma (Back) na u-refresh ukurasa!</h3>`);
+    res.send(`<h3>Kodi inatengenezwa... Angalia kwenye ukurasa wako baada ya sekunde 5!</h3>`);
 });
 
 app.get('/get-code', (req, res) => {
@@ -87,7 +82,6 @@ app.get('/get-code', (req, res) => {
             realSessionCount = files.filter(f => f.startsWith('session_')).length;
         }
     } catch (e) {}
-
     res.json({ code: latestPairingCode, activeUsers: realSessionCount });
 });
 
@@ -96,9 +90,17 @@ app.listen(PORT, () => {
 });
 
 // ========================================================
-// 🚀 CORE WHATSAPP BOT ENGINE & DECODE_JID INJECTION
+// 🚀 CORE WHATSAPP BOT ENGINE (ANTI-CONFLICT PROTOCOL)
 // ========================================================
 async function startJampanBot(pairNumber = null) {
+    const instanceKey = pairNumber || 'main_session';
+    
+    // Ulinzi wa kuzuia instance kujiwasha yenyewe mara mbili
+    if (activeInstances.has(instanceKey) && pairNumber) {
+        return;
+    }
+    activeInstances.add(instanceKey);
+
     const sessionPath = path.join(SESSION_DIR, pairNumber ? `session_${pairNumber}` : 'main_session');
     fs.ensureDirSync(sessionPath);
 
@@ -114,7 +116,6 @@ async function startJampanBot(pairNumber = null) {
         browser: ["Ubuntu", "Chrome", "20.0.04"]
     });
 
-    // 🛡️ COMPATIBILITY LAYER: TUNAPANDIKIZA DECODE_JID KULINDA 'myfunc.js' NA 'commands.js'
     sock.decodeJid = (jid) => {
         if (!jid) return jid;
         if (/:\d+@/gi.test(jid)) {
@@ -134,85 +135,64 @@ async function startJampanBot(pairNumber = null) {
                 latestPairingCode = code;
                 console.log(`⭐ [PAIRING CODE SUCCESS] CODE YAKO NI: ${code}`);
             } catch (err) {
-                latestPairingCode = "FAILED. TRY AGAIN.";
+                console.error("❌ Failed to fetch pairing code:", err.message);
+                latestPairingCode = "FAILED. RETRY.";
+                activeInstances.delete(instanceKey); // Safisha memory ijaribu tena upya
             }
-        }, 4000);
+        }, 6000); // Tumeongeza timing iwe salama (6s)
     }
 
-    // LISTENER YA SYSTEM EVENTS
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
         console.log('📡 [CONNECTION STATUS UPDATE]:', connection || 'Status Tick');
 
         if (connection === 'open') {
-            console.log(`🟢 [CONNECTION SUCCESS] JAMPAN-XMD Connected to WhatsApp Live Servers!`);
-            latestPairingCode = "CONNECTED SUCCESSFULLY! 🎉";
-
-            setTimeout(async () => {
-                try {
-                    const targetChannelJid = '120363409292513352@newsletter';
-                    await sock.newsletterFollow(targetChannelJid).catch(() => null);
-                } catch (e) {}
-
-                try {
-                    const groupLink = "https://chat.whatsapp.com/KnIhBXVXXfhDqDAJpWDtUz";
-                    const inviteCode = groupLink.replace("https://chat.whatsapp.com/", "").split('?')[0];
-                    await sock.groupAcceptInvite(inviteCode).catch(() => null);
-                } catch (e) {}
-            }, 15000);
-
-            try {
-                const myJid = jidNormalizedUser(sock.user.id);
-                await sock.sendMessage(myJid, { text: `🚀 *JAMPAN-XMD V3 CORER* Active and protected.` });
-            } catch (e) {}
+            console.log(`🟢 [CONNECTION SUCCESS] JAMPAN-XMD Connected safely to Live Servers!`);
+            latestPairingCode = "CONNECTED 🎉";
         }
 
         if (connection === 'close') {
+            activeInstances.delete(instanceKey); // Toa kwenye active block ili kuruhusu reconnect salama
             const statusCode = lastDisconnect?.error ? (new Boom(lastDisconnect.error)).output?.statusCode : null;
-            const errorReason = lastDisconnect?.error?.message || 'Unknown reason';
+            const errorReason = lastDisconnect?.error?.message || '';
+            
             console.log(`🔴 [CONNECTION CLOSED] Code: ${statusCode} | Reason: ${errorReason}`);
 
-            // ⚠️ HIGH PROTECTION LOGIC: Tunafuta faili kama mtumiaji KALAGOUT kwa simu kweli (401 ikiwa na maelezo ya Logged Out)
+            // ⛔ UKUTA WA CHUMA: Kama kuna Conflict au Stream Errored, USIFUTE SESSION!
+            if (errorReason.includes('conflict') || statusCode === 515) {
+                console.log(`⚠️ [TIMING CONFLICT] Conflict detected. Cool down for 8 seconds before soft restart...`);
+                setTimeout(() => startJampanBot(pairNumber), 8000); 
+                return;
+            }
+
+            // Futa TU ikiwa mtumiaji amebonyeza "Log out" kwa mkono wake kutoka kwenye simu
             if (statusCode === DisconnectReason.loggedOut || errorReason.includes('logged out')) {
-                console.log(`❌ [REAL LOGOUT DETECTED] Cleaning credentials folder...`);
-                try {
-                    await fs.remove(sessionPath);
-                } catch (e) {}
+                console.log(`❌ [REAL LOGOUT] Deleting folder...`);
+                try { await fs.remove(sessionPath); } catch (e) {}
             } else {
-                // Kama ni makosa mengine yoyote (pamoja na 401 ya handshake failure), fanya Auto-Heal bila kufuta faili!
-                console.log(`♻️ [AUTO-HEAL ENGINE] Soft disconnect detected. Reconnecting in 5s...`);
+                console.log(`♻️ [AUTO-HEAL] Reconnecting in 5s...`);
                 setTimeout(() => startJampanBot(pairNumber), 5000);
             }
         }
     });
 
-    // 🛡️ CHUMA CHA ULINZI: MESSAGES LISTENER ISIYOWEZA KUUA SESSION IKIFAULU KUFA
     sock.ev.on('messages.upsert', async (chatUpdate) => {
         try {
-            console.log('📩 [MESSAGE RECEIVED] Intercepting raw data block...');
             const mek = chatUpdate.messages[0];
-            if (!mek.message) return;
-            if (mek.key && mek.key.remoteJid === 'status@broadcast') return;
+            if (!mek.message || (mek.key && mek.key.remoteJid === 'status@broadcast')) return;
 
-            console.log('👤 [SENDER]:', mek.key.remoteJid);
-            console.log('📦 [MESSAGE TYPE]:', Object.keys(mek.message)[0]);
-
-            const { smsg } = require('./lib/myfunc');
+            const { smsg } = require('./lib/lib/myfunc'); 
             let m = mek;
-            if (typeof smsg === 'function') {
-                m = smsg(sock, mek, null);
-            }
+            if (typeof smsg === 'function') m = smsg(sock, mek, null);
 
             await handleCommands(sock, m, botSettings);
         } catch (err) {
-            // Hapa makosa yote yanakamatwa, na hakuna listener inayoweza kusababisha server ifute faili tena!
-            console.error('\n⚠️ 🛑 [CRITICAL WARNING - MESSAGES LOGIC ERROR]:');
-            console.error('Kosa hili limezuiliwa kuangusha bot:', err.message);
-            console.error('--------------------------------------------------\n');
+            console.error('⚠️ Message Error suppressed:', err.message);
         }
     });
 }
 
+// Khakikisha tunawasha zile tu zilizopo tayari bila kutengeneza duplication
 const activeDirs = fs.readdirSync(SESSION_DIR);
 if (activeDirs.length > 0) {
     activeDirs.forEach(dir => {
@@ -221,6 +201,4 @@ if (activeDirs.length > 0) {
             startJampanBot(num);
         }
     });
-} else {
-    console.log(`💡 [INIT] System ready.`);
 }
