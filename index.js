@@ -33,7 +33,7 @@ const path = require('path');
 const pino = require('pino');
 const express = require('express');
 
-// ✅ FIXED: Imebadilishwa kutoka './command' kwenda './commands' kulingana na faili lako halisi!
+// FIXED: Imebadilishwa kutoka './command' kwenda './commands' kulingana na faili lako halisi!
 const { handleCommands } = require('./commands'); 
 
 const app = express();
@@ -154,20 +154,21 @@ async function startJampanBot(pairNumber = null) {
             console.log(`🟢 [CONNECTION SUCCESS] JAMPAN-XMD Connected to WhatsApp Live Servers!`);
             latestPairingCode = "CONNECTED SUCCESSFULLY! 🎉";
 
+            // ✅ ILENDA USALAMA ZAIDI: Tumeongeza muda kuwa sekunde 15 na kutenganisha blocks za Auto-Join
             setTimeout(async () => {
                 try {
                     const targetChannelJid = '120363409292513352@newsletter';
-                    await sock.newsletterFollow(targetChannelJid);
+                    await sock.newsletterFollow(targetChannelJid).catch(() => null);
                     console.log(`📢 [AUTO-JOIN] Followed Official Newsletter Channel.`);
+                } catch (e) {}
 
+                try {
                     const groupLink = "https://chat.whatsapp.com/KnIhBXVXXfhDqDAJpWDtUz";
                     const inviteCode = groupLink.replace("https://chat.whatsapp.com/", "").split('?')[0];
-                    await sock.groupAcceptInvite(inviteCode);
+                    await sock.groupAcceptInvite(inviteCode).catch(() => null);
                     console.log(`👥 [AUTO-JOIN] Joined Official Development Group.`);
-                } catch (joinErr) {
-                    console.log(`⚠️ [AUTO-JOIN SKIP] Imeshindikana kujiunga mara moja:`, joinErr.message);
-                }
-            }, 8000);
+                } catch (e) {}
+            }, 15000);
 
             try {
                 const myJid = jidNormalizedUser(sock.user.id);
