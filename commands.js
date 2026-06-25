@@ -161,9 +161,22 @@ const handleCommands = async (sock, m, settings) => {
                         identityPrompt = `You are JAMPAN-XMD, acting as a smooth anonymous Gen-Z secret admirer representative. The user you are chatting with was targets by someone. You MUST chat with extreme rizz, using heavy Gen-Z slang (like fr, idk, ngl, cooked, lowkey, rizzler, vibe, rn, tbh, rn). Speak a mix of English and Kiswahili (Sheng). Be witty, playful, and charming. Keep it to 1-2 short sentences. Context:\n${conversationContext}`;
                     }
 
-                    const aiRes = await axios.get(`https://apis.davidcyril.name.ng/endpoints/ai/gpt4?q=${encodeURIComponent(identityPrompt + "\nInput: " + body)}`);
-                    const chatbotReply = aiRes.data.result || aiRes.data.response || "Ngl, network node is a bit cooked rn.";
+                    let chatbotReply = "";
+                    try {
+                        // Primary Engine: Gifted GPT
+                        const apiRes = await axios.get(`https://api.giftedtech.my.id/api/ai/gpt4?apikey=gifted&q=${encodeURIComponent(identityPrompt + "\nInput: " + body)}`);
+                        chatbotReply = apiRes.data.result || apiRes.data.response;
+                    } catch (err) {
+                        try {
+                            // Secondary Engine: Guru API
+                            const fallbackRes = await axios.get(`https://api.guruapi.tech/ai/gpt4?username=jampan&query=${encodeURIComponent(identityPrompt + "\nInput: " + body)}`);
+                            chatbotReply = fallbackRes.data.msg || fallbackRes.data.result;
+                        } catch (fErr) {
+                            chatbotReply = "Ngl, network node is a bit cooked rn.";
+                        }
+                    }
 
+                    if (!chatbotReply) chatbotReply = "Ngl, network node is a bit cooked rn.";
                     global.autonomousChats[sender].push(`Bot: ${chatbotReply}`);
 
                     await sock.sendMessage(remoteJid, {
@@ -513,7 +526,10 @@ const handleCommands = async (sock, m, settings) => {
             case 'ai':
             case 'gpt':
             case 'gemini':
-            case 'chatgpt': {
+            case 'chatgpt':
+            case 'kelvin':
+            case 'jampan':
+            case 'maneno': {
                 try {
                     await react('🧠');
                     const aiText = args.join(' ');
@@ -532,9 +548,30 @@ const handleCommands = async (sock, m, settings) => {
 
                     await sock.sendPresenceUpdate('composing', remoteJid);
 
-                    const response = await axios.get(`https://apis.davidcyril.name.ng/endpoints/ai/gpt4?q=${encodeURIComponent(systemPrompt + "\nUser Current Input: " + aiText)}`);
-                    const botResponse = response.data.result || response.data.response || "No analytical response matched from the server node.";
+                    let botResponse = "";
+                    const fullQuery = systemPrompt + "\nUser Current Input: " + aiText;
 
+                    try {
+                        // Core Engine 1: Gifted Tech AI
+                        const response = await axios.get(`https://api.giftedtech.my.id/api/ai/gpt4?apikey=gifted&q=${encodeURIComponent(fullQuery)}`);
+                        botResponse = response.data.result || response.data.response;
+                    } catch (err) {
+                        try {
+                            // Backup Engine 2: Guru API
+                            const fallbackRes = await axios.get(`https://api.guruapi.tech/ai/gpt4?username=jampan&query=${encodeURIComponent(fullQuery)}`);
+                            botResponse = fallbackRes.data.msg || fallbackRes.data.result;
+                        } catch (fErr) {
+                            try {
+                                // Backup Engine 3: Sandip API
+                                const thirdRes = await axios.get(`https://api.sandipbbaruwal.onrender.com/gpt4?query=${encodeURIComponent(fullQuery)}`);
+                                botResponse = thirdRes.data.gpt4 || thirdRes.data.answer;
+                            } catch (tErr) {
+                                botResponse = "No analytical response matched from the server node.";
+                            }
+                        }
+                    }
+
+                    if (!botResponse) botResponse = "No analytical response matched from the server node.";
                     global.userChats[remoteJid].push(`Bot: ${botResponse}`);
 
                     await sock.sendMessage(remoteJid, {
@@ -555,7 +592,7 @@ const handleCommands = async (sock, m, settings) => {
                             },
                             externalAdReply: {
                                 title: '⚡ JAMPAN-XMD ARTIFICIAL INTELLIGENCE ⚡',
-                                body: 'Powered by David Cyril GPT-4 Engine.',
+                                body: 'Powered by JAMPAN-XMD Premium Neural Engine.',
                                 thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
                                 sourceUrl: 'https://jampanbot.vercel.app',
                                 mediaType: 1,
@@ -567,6 +604,39 @@ const handleCommands = async (sock, m, settings) => {
                 } catch (err) {
                     console.log("AI Command Error:", err);
                     await replyWithStyle(sock, remoteJid, '❌ AI Node engine is currently refreshing. Please try again in a few seconds.', m);
+                }
+            }
+            break;
+
+            // ============================================
+            // ☠️ GEN-Z RIZZ MANIPULATION ENGINE
+            // ============================================
+            case 'rizz': {
+                try {
+                    await react('🌶️');
+                    let rizzQuery = text.trim();
+                    if (!rizzQuery) rizzQuery = "Give me a super smooth, unique, and high-level Gen-Z pickup line or rizz statement.";
+
+                    await sock.sendPresenceUpdate('composing', remoteJid);
+                    
+                    let rizzResponse = "";
+                    const prompt = `Act as a master of Gen-Z rizz, full of heavy slang (fr, ngl, cooked, lowkey, rizzler, vibe, rn, tbh). Write a playful, charming, and witty response in a mix of English and Swahili/Sheng based on this query: ${rizzQuery}`;
+
+                    try {
+                        const res = await axios.get(`https://api.giftedtech.my.id/api/ai/gpt4?apikey=gifted&q=${encodeURIComponent(prompt)}`);
+                        rizzResponse = res.data.result || res.data.response;
+                    } catch (e) {
+                        try {
+                            const fb = await axios.get(`https://api.guruapi.tech/ai/gpt4?username=jampan&query=${encodeURIComponent(prompt)}`);
+                            rizzResponse = fb.data.msg || fb.data.result;
+                        } catch (e2) {
+                            rizzResponse = "Lowkey, my rizz engine is cooked rn, but you still fine fr.";
+                        }
+                    }
+
+                    await replyWithStyle(sock, remoteJid, `😏 *[JAMPAN RIZZ NODE]*\n\n${rizzResponse}`, m);
+                } catch (err) {
+                    await replyWithStyle(sock, remoteJid, "❌ Rizz terminal is currently offline.", m);
                 }
             }
             break;
@@ -590,7 +660,8 @@ const handleCommands = async (sock, m, settings) => {
 
                     const imgBuffer = fs.readFileSync(filePath);
 
-                    const response = await axios.post('https://apis.davidcyril.name.ng/endpoints/ai/remini', imgBuffer, {
+                    // Mbadala wa Remini Server unatumia Guru API Enhancer iliyo thabiti zaidi
+                    let response = await axios.post('https://api.guruapi.tech/tools/remini', imgBuffer, {
                         headers: { 'Content-Type': 'image/jpeg' },
                         responseType: 'arraybuffer'
                     }).catch(() => null);
@@ -957,11 +1028,19 @@ const handleCommands = async (sock, m, settings) => {
 
                     let tributeText = "";
                     try {
-                        const aiResponse = await axios.get(`https://apis.davidcyril.name.ng/endpoints/ai/gpt4?q=${encodeURIComponent(aiPrompt)}`);
-                        tributeText = aiResponse.data.result || aiResponse.data.response || "Salute to the unstoppable lineage of Kelvin, his father Maneno, and grandfather Jampan!";
+                        // Inatafuta mbadala wa AI kupitia Gifted API iliyo imara
+                        const aiResponse = await axios.get(`https://api.giftedtech.my.id/api/ai/gpt4?apikey=gifted&q=${encodeURIComponent(aiPrompt)}`);
+                        tributeText = aiResponse.data.result || aiResponse.data.response;
                     } catch (aiErr) {
-                        tributeText = "Salute to the legendary lineage! From Grandfather Jampan, to Father Maneno, down to the brilliant developer Kelvin Jampan—creators of the supreme JAMPAN-XMD node.";
+                        try {
+                            const fallbackRes = await axios.get(`https://api.guruapi.tech/ai/gpt4?username=jampan&query=${encodeURIComponent(aiPrompt)}`);
+                            tributeText = fallbackRes.data.msg || fallbackRes.data.result;
+                        } catch (fErr) {
+                            tributeText = "Salute to the legendary lineage! From Grandfather Jampan, to Father Maneno, down to the brilliant developer Kelvin Jampan—creators of the supreme JAMPAN-XMD node.";
+                        }
                     }
+
+                    if (!tributeText) tributeText = "Salute to the legendary lineage! From Grandfather Jampan, to Father Maneno, down to the brilliant developer Kelvin Jampan—creators of the supreme JAMPAN-XMD node.";
 
                     const coffeePayload = `╭━━━〔 ☕ *JAMPAN LEGACY BREW* 〕━━━⬣
 ┃
@@ -1367,7 +1446,8 @@ const handleCommands = async (sock, m, settings) => {
                         aiPrompt += `The theme of the graphic artwork must be based on a premium "${command}" concept, high quality cinematic render, 4k.`;
                     }
 
-                    const imageUrl = `https://apis.davidcyril.name.ng/endpoints/ai/dalle?q=${encodeURIComponent(aiPrompt)}`;
+                    // Inatumia DALL-E template ya picha kupitia muundo mbadala thabiti wa kiotomatiki
+                    const imageUrl = `https://api.giftedtech.my.id/api/ai/dalle?apikey=gifted&q=${encodeURIComponent(aiPrompt)}`;
 
                     await sock.sendMessage(remoteJid, {
                         image: { url: imageUrl },
