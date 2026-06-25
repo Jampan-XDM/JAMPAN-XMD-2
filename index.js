@@ -33,7 +33,7 @@ const path = require('path');
 const pino = require('pino');
 const express = require('express');
 
-// FIXED: Imebadilishwa kutoka './command' kwenda './commands' kulingana na faili lako halisi!
+// LINK TO COMMANDS PROCESSOR
 const { handleCommands } = require('./commands'); 
 
 const app = express();
@@ -41,7 +41,6 @@ const PORT = process.env.PORT || 8000;
 const SESSION_DIR = path.join(__dirname, 'sessions');
 fs.ensureDirSync(SESSION_DIR);
 
-// Settings za Bot
 const botSettings = {
     ownerNumber: '255674229015',
     autoTyping: false,
@@ -49,41 +48,37 @@ const botSettings = {
     mode: 'public'
 };
 
-// Global Store ya Active Pairing Codes
 let latestPairingCode = "No code requested yet.";
 
 // ========================================================
-// 🌐 PORT BINDING & FRONTEND INTEGRATION (index.html)
+// 🌐 PORT BINDING & FRONTEND INTEGRATION
 // ========================================================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 1. Inasoma na kurudisha faili lako la index.html link ya Heroku inapofunguliwa
 app.get('/', (req, res) => {
     const indexPath = path.join(__dirname, 'index.html');
     if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
     } else {
-        res.status(404).send("❌ Hitilafu: Faili la 'index.html' halikupatikana kwenye folda kuu (root directory)!");
+        res.status(404).send("❌ Hitilafu: index.html missing!");
     }
 });
 
-// 2. Endpoint inayopokea namba ya simu kutoka kwenye Form ya index.html yako
 app.post('/request-code', async (req, res) => {
     let phone = req.body.phone || req.body.number; 
-    if (!phone) return res.status(400).send("Namba ya simu inahitajika!");
+    if (!phone) return res.status(400).send("Namba inahitajika!");
 
     phone = phone.replace(/[^0-9]/g, '');
-    console.log(`\n📲 [PAIRING HTTP] Pairing request received via HTML frontend for: +${phone}`);
+    console.log(`\n📲 [PAIRING HTTP] Request for: +${phone}`);
 
     latestPairingCode = "WAITING...";
     startJampanBot(phone);
 
-    res.send(`<h3>Kodi inatengenezwa... Tafadhali rudi nyuma (Back) na u-refresh ukurasa kuona kodi yako!</h3>`);
+    res.send(`<h3>Kodi inatengenezwa... Tafadhali rudi nyuma (Back) na u-refresh ukurasa!</h3>`);
 });
 
-// 3. API YA UKWELI: Inavuta kodi NA kuhesabu folda halisi za active sessions!
 app.get('/get-code', (req, res) => {
     let realSessionCount = 0;
     try {
@@ -91,30 +86,23 @@ app.get('/get-code', (req, res) => {
             const files = fs.readdirSync(SESSION_DIR);
             realSessionCount = files.filter(f => f.startsWith('session_')).length;
         }
-    } catch (e) {
-        console.error("❌ Hitilafu ya kusoma folda za session backend:", e.message);
-    }
+    } catch (e) {}
 
-    res.json({ 
-        code: latestPairingCode,
-        activeUsers: realSessionCount 
-    });
+    res.json({ code: latestPairingCode, activeUsers: realSessionCount });
 });
 
 app.listen(PORT, () => {
-    console.log(`🌐 [HTTP SERVER] Express Server is listening on port: ${PORT} (Heroku Integration Active)`);
+    console.log(`🌐 [HTTP SERVER] Running on port: ${PORT}`);
 });
 
 // ========================================================
-// 🚀 CORE WHATSAPP BOT ENGINE & AUTO-HEAL INFRASTRUCTURE
+// 🚀 CORE WHATSAPP BOT ENGINE & DECODE_JID INJECTION
 // ========================================================
 async function startJampanBot(pairNumber = null) {
     const sessionPath = path.join(SESSION_DIR, pairNumber ? `session_${pairNumber}` : 'main_session');
     fs.ensureDirSync(sessionPath);
 
     const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
-
-    console.log(`🤖 [ENGINE] Initializing Baileys Socket Interface...`);
 
     const sock = makeWASocket({
         auth: {
@@ -126,17 +114,26 @@ async function startJampanBot(pairNumber = null) {
         browser: ["Ubuntu", "Chrome", "20.0.04"]
     });
 
+    // 🛡️ COMPATIBILITY LAYER: TUNAPANDIKIZA DECODE_JID KULINDA 'myfunc.js' NA 'commands.js'
+    sock.decodeJid = (jid) => {
+        if (!jid) return jid;
+        if (/:\d+@/gi.test(jid)) {
+            let decode = jidNormalizedUser(jid);
+            return decode;
+        }
+        return jid;
+    };
+
     sock.ev.on('creds.update', saveCreds);
 
     if (pairNumber && !sock.authState.creds.registered) {
         setTimeout(async () => {
             try {
-                console.log(`📡 [PAIRING FLOW] Requesting pairing code from WhatsApp servers for: +${pairNumber}`);
+                console.log(`📡 [PAIRING FLOW] Fetching code for: +${pairNumber}`);
                 const code = await sock.requestPairingCode(pairNumber);
                 latestPairingCode = code;
                 console.log(`⭐ [PAIRING CODE SUCCESS] CODE YAKO NI: ${code}`);
             } catch (err) {
-                console.error(`❌ [PAIRING FLOW ERROR] Imefeli kutoa code:`, err.message);
                 latestPairingCode = "FAILED. TRY AGAIN.";
             }
         }, 4000);
@@ -145,68 +142,60 @@ async function startJampanBot(pairNumber = null) {
     // LISTENER YA SYSTEM EVENTS
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
-
-        if (connection === 'connecting') {
-            console.log(`⏳ [CONNECTION] Node connecting... Please hold on.`);
-        }
+        console.log('📡 [CONNECTION STATUS UPDATE]:', connection || 'Status Tick');
 
         if (connection === 'open') {
             console.log(`🟢 [CONNECTION SUCCESS] JAMPAN-XMD Connected to WhatsApp Live Servers!`);
             latestPairingCode = "CONNECTED SUCCESSFULLY! 🎉";
 
-            // ✅ ILENDA USALAMA ZAIDI: Tumeongeza muda kuwa sekunde 15 na kutenganisha blocks za Auto-Join
             setTimeout(async () => {
                 try {
                     const targetChannelJid = '120363409292513352@newsletter';
                     await sock.newsletterFollow(targetChannelJid).catch(() => null);
-                    console.log(`📢 [AUTO-JOIN] Followed Official Newsletter Channel.`);
                 } catch (e) {}
 
                 try {
                     const groupLink = "https://chat.whatsapp.com/KnIhBXVXXfhDqDAJpWDtUz";
                     const inviteCode = groupLink.replace("https://chat.whatsapp.com/", "").split('?')[0];
                     await sock.groupAcceptInvite(inviteCode).catch(() => null);
-                    console.log(`👥 [AUTO-JOIN] Joined Official Development Group.`);
                 } catch (e) {}
             }, 15000);
 
             try {
                 const myJid = jidNormalizedUser(sock.user.id);
-                await sock.sendMessage(myJid, { text: `🚀 *JAMPAN-XMD V3 CORER* Kila kitu kipo sawa sasa hivi. Engine ipo hai 24/7.` });
+                await sock.sendMessage(myJid, { text: `🚀 *JAMPAN-XMD V3 CORER* Active and protected.` });
             } catch (e) {}
         }
 
         if (connection === 'close') {
             const statusCode = lastDisconnect?.error ? (new Boom(lastDisconnect.error)).output?.statusCode : null;
-            console.log(`🔴 [CONNECTION CLOSED] Bot imekatwa mawasiliano. Boom Code: ${statusCode}`);
+            const errorReason = lastDisconnect?.error?.message || 'Unknown reason';
+            console.log(`🔴 [CONNECTION CLOSED] Code: ${statusCode} | Reason: ${errorReason}`);
 
-            const autoReconnectCodes = [
-                DisconnectReason.connectionClosed,
-                DisconnectReason.connectionLost,
-                DisconnectReason.timedOut, 
-                DisconnectReason.restartRequired,
-                DisconnectReason.connectionReplaced,
-                500, 503, 408
-            ];
-
-            if (autoReconnectCodes.includes(statusCode) || (statusCode && statusCode !== 401)) {
-                console.log(`♻️ [AUTO-HEAL] Mfumo unajirudisha kwenye mstari wenyewe baada ya sekunde 5...`);
-                setTimeout(() => startJampanBot(pairNumber), 5000);
-            } else if (statusCode === 401 || statusCode === DisconnectReason.loggedOut) {
-                console.log(`❌ [SESSION LOGGED OUT] Kikao kimefutwa na mtumiaji. Tunafuta login files...`);
+            // ⚠️ HIGH PROTECTION LOGIC: Tunafuta faili kama mtumiaji KALAGOUT kwa simu kweli (401 ikiwa na maelezo ya Logged Out)
+            if (statusCode === DisconnectReason.loggedOut || errorReason.includes('logged out')) {
+                console.log(`❌ [REAL LOGOUT DETECTED] Cleaning credentials folder...`);
                 try {
                     await fs.remove(sessionPath);
                 } catch (e) {}
+            } else {
+                // Kama ni makosa mengine yoyote (pamoja na 401 ya handshake failure), fanya Auto-Heal bila kufuta faili!
+                console.log(`♻️ [AUTO-HEAL ENGINE] Soft disconnect detected. Reconnecting in 5s...`);
+                setTimeout(() => startJampanBot(pairNumber), 5000);
             }
         }
     });
 
-    // LISTENER YA MESSAGES
+    // 🛡️ CHUMA CHA ULINZI: MESSAGES LISTENER ISIYOWEZA KUUA SESSION IKIFAULU KUFA
     sock.ev.on('messages.upsert', async (chatUpdate) => {
         try {
+            console.log('📩 [MESSAGE RECEIVED] Intercepting raw data block...');
             const mek = chatUpdate.messages[0];
             if (!mek.message) return;
             if (mek.key && mek.key.remoteJid === 'status@broadcast') return;
+
+            console.log('👤 [SENDER]:', mek.key.remoteJid);
+            console.log('📦 [MESSAGE TYPE]:', Object.keys(mek.message)[0]);
 
             const { smsg } = require('./lib/myfunc');
             let m = mek;
@@ -216,15 +205,16 @@ async function startJampanBot(pairNumber = null) {
 
             await handleCommands(sock, m, botSettings);
         } catch (err) {
-            console.error("❌ Error in message logic listener:", err.message);
+            // Hapa makosa yote yanakamatwa, na hakuna listener inayoweza kusababisha server ifute faili tena!
+            console.error('\n⚠️ 🛑 [CRITICAL WARNING - MESSAGES LOGIC ERROR]:');
+            console.error('Kosa hili limezuiliwa kuangusha bot:', err.message);
+            console.error('--------------------------------------------------\n');
         }
     });
 }
 
-// Kazi ya uanzishwaji otomatiki ikiwa kuna session iliyopo tayari
 const activeDirs = fs.readdirSync(SESSION_DIR);
 if (activeDirs.length > 0) {
-    console.log(`📂 [INIT] Imepata session zilizopo kwenye folda za mfumo. Tunawasha Engine zote.`);
     activeDirs.forEach(dir => {
         if (dir.startsWith('session_')) {
             const num = dir.replace('session_', '');
@@ -232,5 +222,5 @@ if (activeDirs.length > 0) {
         }
     });
 } else {
-    console.log(`💡 [INIT] Folda ya session ipo tupu. Mfumo upo tayari kupokea namba yako kupitia Heroku Web Link!`);
+    console.log(`💡 [INIT] System ready.`);
 }
