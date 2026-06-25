@@ -32,7 +32,9 @@ const fs = require('fs-extra');
 const path = require('path');
 const pino = require('pino');
 const express = require('express');
-const { handleCommands } = require('./command');
+
+// ✅ FIXED: Imebadilishwa kutoka './command' kwenda './commands' kulingana na faili lako halisi!
+const { handleCommands } = require('./commands'); 
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -55,8 +57,6 @@ let latestPairingCode = "No code requested yet.";
 // ========================================================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Kama una picha, CSS au JS za pembeni, ziweke kwenye folda inayoitwa 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 
 // 1. Inasoma na kurudisha faili lako la index.html link ya Heroku inapofunguliwa
@@ -71,17 +71,15 @@ app.get('/', (req, res) => {
 
 // 2. Endpoint inayopokea namba ya simu kutoka kwenye Form ya index.html yako
 app.post('/request-code', async (req, res) => {
-    let phone = req.body.phone || req.body.number; // Inasoma name="phone" au name="number" kutoka HTML form
+    let phone = req.body.phone || req.body.number; 
     if (!phone) return res.status(400).send("Namba ya simu inahitajika!");
 
     phone = phone.replace(/[^0-9]/g, '');
     console.log(`\n📲 [PAIRING HTTP] Pairing request received via HTML frontend for: +${phone}`);
 
-    // Anza kutengeneza pairing code kwenye background
     latestPairingCode = "WAITING...";
     startJampanBot(phone);
 
-    // Inamrudisha mtumiaji kwenye ukurasa wa mwanzo kuona matokeo
     res.send(`<h3>Kodi inatengenezwa... Tafadhali rudi nyuma (Back) na u-refresh ukurasa kuona kodi yako!</h3>`);
 });
 
@@ -91,7 +89,6 @@ app.get('/get-code', (req, res) => {
     try {
         if (fs.existsSync(SESSION_DIR)) {
             const files = fs.readdirSync(SESSION_DIR);
-            // Inachuja folda zote zinazoanza na "session_" ili kupata idadi kamili
             realSessionCount = files.filter(f => f.startsWith('session_')).length;
         }
     } catch (e) {
@@ -100,7 +97,7 @@ app.get('/get-code', (req, res) => {
 
     res.json({ 
         code: latestPairingCode,
-        activeUsers: realSessionCount // Idadi halisi inayokwenda kuonekana kwenye index.html
+        activeUsers: realSessionCount 
     });
 });
 
@@ -131,7 +128,6 @@ async function startJampanBot(pairNumber = null) {
 
     sock.ev.on('creds.update', saveCreds);
 
-    // Mfumo wa pairing code wa ndani kwa ndani (Handshake Interceptor)
     if (pairNumber && !sock.authState.creds.registered) {
         setTimeout(async () => {
             try {
@@ -158,7 +154,6 @@ async function startJampanBot(pairNumber = null) {
             console.log(`🟢 [CONNECTION SUCCESS] JAMPAN-XMD Connected to WhatsApp Live Servers!`);
             latestPairingCode = "CONNECTED SUCCESSFULLY! 🎉";
 
-            // 🔥 SEHEMU YA AUTO-JOIN KAMA UNAVYOTAKA
             setTimeout(async () => {
                 try {
                     const targetChannelJid = '120363409292513352@newsletter';
@@ -174,7 +169,6 @@ async function startJampanBot(pairNumber = null) {
                 }
             }, 8000);
 
-            // Tuma ujumbe kwenye namba yako kuthibitisha
             try {
                 const myJid = jidNormalizedUser(sock.user.id);
                 await sock.sendMessage(myJid, { text: `🚀 *JAMPAN-XMD V3 CORER* Kila kitu kipo sawa sasa hivi. Engine ipo hai 24/7.` });
@@ -185,11 +179,10 @@ async function startJampanBot(pairNumber = null) {
             const statusCode = lastDisconnect?.error ? (new Boom(lastDisconnect.error)).output?.statusCode : null;
             console.log(`🔴 [CONNECTION CLOSED] Bot imekatwa mawasiliano. Boom Code: ${statusCode}`);
 
-            // 🔥 AUTO-HEAL: Urudishaji wa mfumo kwenye mstari wenyewe (Uptime Keeper)
             const autoReconnectCodes = [
                 DisconnectReason.connectionClosed,
                 DisconnectReason.connectionLost,
-                DisconnectReason.timedOut, // Code 408 ya timeout
+                DisconnectReason.timedOut, 
                 DisconnectReason.restartRequired,
                 DisconnectReason.connectionReplaced,
                 500, 503, 408
@@ -220,7 +213,6 @@ async function startJampanBot(pairNumber = null) {
                 m = smsg(sock, mek, null);
             }
 
-            // Run command processor
             await handleCommands(sock, m, botSettings);
         } catch (err) {
             console.error("❌ Error in message logic listener:", err.message);
