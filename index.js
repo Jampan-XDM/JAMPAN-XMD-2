@@ -73,21 +73,35 @@ app.get('/', (req, res) => {
 app.post('/request-code', async (req, res) => {
     let phone = req.body.phone || req.body.number; // Inasoma name="phone" au name="number" kutoka HTML form
     if (!phone) return res.status(400).send("Namba ya simu inahitajika!");
-    
+
     phone = phone.replace(/[^0-9]/g, '');
     console.log(`\n📲 [PAIRING HTTP] Pairing request received via HTML frontend for: +${phone}`);
-    
+
     // Anza kutengeneza pairing code kwenye background
     latestPairingCode = "WAITING...";
     startJampanBot(phone);
-    
+
     // Inamrudisha mtumiaji kwenye ukurasa wa mwanzo kuona matokeo
     res.send(`<h3>Kodi inatengenezwa... Tafadhali rudi nyuma (Back) na u-refresh ukurasa kuona kodi yako!</h3>`);
 });
 
-// 3. API ya siri ya kuvuta kodi kwa kutumia JavaScript (Fetch/AJAX) kwenye index.html yako
+// 3. API YA UKWELI: Inavuta kodi NA kuhesabu folda halisi za active sessions!
 app.get('/get-code', (req, res) => {
-    res.json({ code: latestPairingCode });
+    let realSessionCount = 0;
+    try {
+        if (fs.existsSync(SESSION_DIR)) {
+            const files = fs.readdirSync(SESSION_DIR);
+            // Inachuja folda zote zinazoanza na "session_" ili kupata idadi kamili
+            realSessionCount = files.filter(f => f.startsWith('session_')).length;
+        }
+    } catch (e) {
+        console.error("❌ Hitilafu ya kusoma folda za session backend:", e.message);
+    }
+
+    res.json({ 
+        code: latestPairingCode,
+        activeUsers: realSessionCount // Idadi halisi inayokwenda kuonekana kwenye index.html
+    });
 });
 
 app.listen(PORT, () => {
@@ -104,7 +118,7 @@ async function startJampanBot(pairNumber = null) {
     const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
 
     console.log(`🤖 [ENGINE] Initializing Baileys Socket Interface...`);
-    
+
     const sock = makeWASocket({
         auth: {
             creds: state.creds,
