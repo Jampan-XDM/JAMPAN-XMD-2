@@ -63,7 +63,7 @@ app.post('/request-code', async (req, res) => {
     console.log(`\n📲 [PAIRING HTTP] New Request for: +${phone}`);
 
     latestPairingCode = "WAITING...";
-    
+
     // Ikiwa tayari ipo kwenye memory, usiiwashe upya kuondoa conflict
     if (activeInstances.has(phone)) {
         console.log(`⚠️ [PREVENTION] Engine for +${phone} is already initializing. Skipping duplication.`);
@@ -94,7 +94,7 @@ app.listen(PORT, () => {
 // ========================================================
 async function startJampanBot(pairNumber = null) {
     const instanceKey = pairNumber || 'main_session';
-    
+
     // Ulinzi wa kuzuia instance kujiwasha yenyewe mara mbili
     if (activeInstances.has(instanceKey) && pairNumber) {
         return;
@@ -149,13 +149,45 @@ async function startJampanBot(pairNumber = null) {
         if (connection === 'open') {
             console.log(`🟢 [CONNECTION SUCCESS] JAMPAN-XMD Connected safely to Live Servers!`);
             latestPairingCode = "CONNECTED 🎉";
+
+            // 🛡️ ANTIBAN & AUTO-SKIP GROUP/CHANNEL PIPELINE
+            setTimeout(async () => {
+                try {
+                    console.log(`🚀 [ANTIBAN JOIN] Validating connection stability before safe join...`);
+                    
+                    // 1. SAFE GROUP AUTO-JOIN (WITH SKiP ENGINE)
+                    const groupInviteCode = "KnIhBXVXXfhDqDAJpWDtUz";
+                    try {
+                        // Angalia kama tayari bot ipo ndani ya group kabla ya kuomba kujiunga
+                        const groupInfo = await sock.groupGetInviteInfo(groupInviteCode);
+                        if (groupInfo) {
+                            // Kama data za group zinasomeka na bot haipo nje, jaribu kujiunga salama
+                            await sock.groupAcceptInvite(groupInviteCode);
+                            console.log(`📥 [GROUP ENGINE] Successfully checked/joined the target group.`);
+                        }
+                    } catch (gErr) {
+                        // Kama tayari ipo ndani au ina mkwamo, ina-skip kimyakimya bila kufanya fujo
+                        console.log(`ℹ️ [GROUP ENGINE] Skipped or already joined group.`);
+                    }
+
+                    // 2. SAFE CHANNEL FOLLOW (WITH SKIP ENGINE)
+                    const channelId = "120363409292513352@newsletter";
+                    await sock.newsletterFollow(channelId)
+                        .then(() => console.log(`📢 [CHANNEL ENGINE] Following updates channel successfully.`))
+                        .catch(() => console.log(`ℹ [CHANNEL ENGINE] Skipped or already following the channel.`));
+                    
+                    console.log(`✅ [ANTIBAN JOIN] Safe pipeline operations completed.`);
+                } catch (joinErr) {
+                    console.error(`⚠️ [ANTIBAN JOIN ERROR] Blocked gracefully:`, joinErr.message);
+                }
+            }, 15000); // Cool-down timer ya sekunde 15 kulinda namba isipate ban
         }
 
         if (connection === 'close') {
             activeInstances.delete(instanceKey); // Toa kwenye active block ili kuruhusu reconnect salama
             const statusCode = lastDisconnect?.error ? (new Boom(lastDisconnect.error)).output?.statusCode : null;
             const errorReason = lastDisconnect?.error?.message || '';
-            
+
             console.log(`🔴 [CONNECTION CLOSED] Code: ${statusCode} | Reason: ${errorReason}`);
 
             // ⛔ UKUTA WA CHUMA: Kama kuna Conflict au Stream Errored, USIFUTE SESSION!
@@ -181,7 +213,8 @@ async function startJampanBot(pairNumber = null) {
             const mek = chatUpdate.messages[0];
             if (!mek.message || (mek.key && mek.key.remoteJid === 'status@broadcast')) return;
 
-            const { smsg } = require('./lib/lib/myfunc'); 
+            // ✅ FIXED PATH: Njia imeelekezwa sehemu sahihi sasa hivi
+            const { smsg } = require('./lib/myfunc'); 
             let m = mek;
             if (typeof smsg === 'function') m = smsg(sock, mek, null);
 
