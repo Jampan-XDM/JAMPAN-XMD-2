@@ -142,7 +142,6 @@ const handleCommands = async (sock, m, settings) => {
                                 text: reportText, 
                                 mentions: [deletedSender] 
                             }, { quoted: deletedMessage });
-
                         } else if (originalType === 'imageMessage') {
                             const caption = originalMsg.imageMessage.caption ? originalMsg.imageMessage.caption : 'No Caption';
                             reportText += `*📸 Deleted Media:* Image\n*Caption:* ${caption}`;
