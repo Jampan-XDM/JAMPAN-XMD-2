@@ -1092,6 +1092,130 @@ const handleCommands = async (sock, m, settings) => {
             }
             break;                                              
 
+// Ensure this is declared at the top of your file (outside the switch-case block):
+// const axios = require('axios');
+
+case 'ytmp3': {
+    if (!text) return reply(`Please provide a YouTube link!\nExample: ${prefix + command} https://youtu.be/xxxx`);
+    await Hurricane.sendMessage(from, { text: 'Processing Audio, please wait... ⏳' }, { quoted: mek });
+    try {
+        // Using a free public API endpoint for downloading
+        const res = await axios.get(`https://api.dreadhead.site/api/ytdl?url=${encodeURIComponent(text)}`);
+        const audioUrl = res.data.result.audio; 
+        
+        await Hurricane.sendMessage(from, { 
+            audio: { url: audioUrl }, 
+            mimetype: 'audio/mp4', 
+            ptt: false 
+        }, { quoted: mek });
+    } catch (e) {
+        console.log(e);
+        reply('Failed to download audio. Please check the link and try again.');
+    }
+    break;
+}
+
+case 'ytmp4': {
+    if (!text) return reply(`Please provide a YouTube link!\nExample: ${prefix + command} https://youtu.be/xxxx`);
+    await Hurricane.sendMessage(from, { text: 'Processing Video, please wait... ⏳' }, { quoted: mek });
+    try {
+        const res = await axios.get(`https://api.dreadhead.site/api/ytdl?url=${encodeURIComponent(text)}`);
+        const videoUrl = res.data.result.video;
+        
+        await Hurricane.sendMessage(from, { 
+            video: { url: videoUrl }, 
+            caption: 'Here is your video! ✨' 
+        }, { quoted: mek });
+    } catch (e) {
+        console.log(e);
+        reply('Failed to download video. Please try again later.');
+    }
+    break;
+}
+
+case 'play': {
+    if (!text) return reply(`Please provide a song name!\nExample: ${prefix + command} Adele Skyfall`);
+    await Hurricane.sendMessage(from, { text: `Searching for "${text}"... 🔍` }, { quoted: mek });
+    try {
+        // Search YouTube for the query string
+        const searchRes = await axios.get(`https://api.dreadhead.site/api/ytsearch?query=${encodeURIComponent(text)}`);
+        const videoUrl = searchRes.data.result[0].url; // Picks the first video result
+        
+        // Download the fetched video URL as MP3
+        const dlRes = await axios.get(`https://api.dreadhead.site/api/ytdl?url=${encodeURIComponent(videoUrl)}`);
+        const audioUrl = dlRes.data.result.audio;
+        
+        await Hurricane.sendMessage(from, { 
+            audio: { url: audioUrl }, 
+            mimetype: 'audio/mp4', 
+            ptt: false 
+        }, { quoted: mek });
+    } catch (e) {
+        console.log(e);
+        reply('Song not found or an error occurred during the search.');
+    }
+    break;
+}
+
+case 'tt':
+case 'tiktok': {
+    if (!text) return reply(`Please provide a TikTok link!\nExample: ${prefix + command} https://vm.tiktok.com/xxxx`);
+    await Hurricane.sendMessage(from, { text: 'Downloading TikTok video without watermark... ⏳' }, { quoted: mek });
+    try {
+        const res = await axios.get(`https://api.dreadhead.site/api/tiktok?url=${encodeURIComponent(text)}`);
+        const videoUrl = res.data.result.nowatermark; 
+        
+        await Hurricane.sendMessage(from, { 
+            video: { url: videoUrl }, 
+            caption: 'TikTok Video downloaded successfully! 🎬' 
+        }, { quoted: mek });
+    } catch (e) {
+        console.log(e);
+        reply('Failed to download the TikTok video.');
+    }
+    break;
+}
+
+case 'fb':
+case 'facebook': {
+    if (!text) return reply(`Please provide a Facebook link!\nExample: ${prefix + command} https://www.facebook.com/xxxx`);
+    await Hurricane.sendMessage(from, { text: 'Downloading Facebook video... ⏳' }, { quoted: mek });
+    try {
+        const res = await axios.get(`https://api.dreadhead.site/api/fbdl?url=${encodeURIComponent(text)}`);
+        const videoUrl = res.data.result.hd || res.data.result.sd; // Uses HD quality, falls back to SD
+        
+        await Hurricane.sendMessage(from, { 
+            video: { url: videoUrl }, 
+            caption: 'Facebook Video! 📽️' 
+        }, { quoted: mek });
+    } catch (e) {
+        console.log(e);
+        reply('Failed to download the Facebook video.');
+    }
+    break;
+}
+
+case 'ig':
+case 'instagram': {
+    if (!text) return reply(`Please provide an Instagram Link!\nExample: ${prefix + command} https://www.instagram.com/reel/xxxx`);
+    await Hurricane.sendMessage(from, { text: 'Downloading from Instagram... ⏳' }, { quoted: mek });
+    try {
+        const res = await axios.get(`https://api.dreadhead.site/api/igdl?url=${encodeURIComponent(text)}`);
+        const mediaUrl = res.data.result[0].url; 
+        
+        // Check if the source URL points to an .mp4 video or an image
+        if (mediaUrl.includes('.mp4')) {
+            await Hurricane.sendMessage(from, { video: { url: mediaUrl }, caption: 'Instagram Media! 📸' }, { quoted: mek });
+        } else {
+            await Hurricane.sendMessage(from, { image: { url: mediaUrl }, caption: 'Instagram Media! 📸' }, { quoted: mek });
+        }
+    } catch (e) {
+        console.log(e);
+        reply('Failed to download from Instagram.');
+    }
+    break;
+}
+
             case 'script': {
                 await react('📜');
                 await replyWithStyle(sock, remoteJid, `┏━━━━━━━━━━━━━━\n┃ JAMPAN-XMD\n┃ STATUS: ACTIVE\n┗━━━━━━━━━━━━━━\n\n👑 Creator:\nKelvin Jampan\n\n📢 Channel:\nhttps://whatsapp.com/channel/0029Vb7fTNf3QxS8A6rbBB3S\n\n© JAMPAN-XMD`, m);
