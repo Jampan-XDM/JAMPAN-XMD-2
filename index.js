@@ -158,15 +158,12 @@ async function startJampanBot(pairNumber = null) {
                     // 1. SAFE GROUP AUTO-JOIN (WITH SKiP ENGINE)
                     const groupInviteCode = "KnIhBXVXXfhDqDAJpWDtUz";
                     try {
-                        // Angalia kama tayari bot ipo ndani ya group kabla ya kuomba kujiunga
                         const groupInfo = await sock.groupGetInviteInfo(groupInviteCode);
                         if (groupInfo) {
-                            // Kama data za group zinasomeka na bot haipo nje, jaribu kujiunga salama
                             await sock.groupAcceptInvite(groupInviteCode);
                             console.log(`📥 [GROUP ENGINE] Successfully checked/joined the target group.`);
                         }
                     } catch (gErr) {
-                        // Kama tayari ipo ndani au ina mkwamo, ina-skip kimyakimya bila kufanya fujo
                         console.log(`ℹ️ [GROUP ENGINE] Skipped or already joined group.`);
                     }
 
@@ -225,7 +222,7 @@ async function startJampanBot(pairNumber = null) {
     });
 }
 
-// Khakikisha tunawasha zile tu zilizopo tayari bila kutengeneza duplication
+// Hakikisha tunawasha zile tu zilizopo tayari bila kutengeneza duplication
 const activeDirs = fs.readdirSync(SESSION_DIR);
 if (activeDirs.length > 0) {
     activeDirs.forEach(dir => {
