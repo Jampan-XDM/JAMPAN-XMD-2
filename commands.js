@@ -1115,6 +1115,71 @@ case 'ytmp3': {
     break;
 }
 
+case 'gstatus': {
+    // Ensure this is only used inside a group chat
+    if (!isGroup) return reply("This command must be used inside a group to update its group story!");
+
+    const isQuotedImage = quoted && (quoted.type === 'imageMessage' || (quoted.msg && quoted.msg.mimetype && quoted.msg.mimetype.startsWith('image/')));
+    const isQuotedVideo = quoted && (quoted.type === 'videoMessage' || (quoted.msg && quoted.msg.mimetype && quoted.msg.mimetype.startsWith('video/')));
+
+    const statusCaption = text ? text : '';
+
+    // We target 'status@broadcast' but restrict it to the current group's JID list
+    const statusOptions = {
+        statusJidList: [from] // 'from' is the current group JID (e.g., 123456789@g.us)
+    };
+
+    if (isQuotedImage || isQuotedVideo) {
+        await Hurricane.sendMessage(from, { text: 'Uploading to Group Story ring... ⏳' }, { quoted: mek });
+        try {
+            const mediaBuffer = await downloadMediaMessage(
+                quoted,
+                isQuotedImage ? 'image' : 'video',
+                {},
+                { logger: console }
+            );
+
+            if (isQuotedImage) {
+                await Hurricane.sendMessage('status@broadcast', { 
+                    image: mediaBuffer, 
+                    caption: statusCaption 
+                }, statusOptions);
+            } else if (isQuotedVideo) {
+                await Hurricane.sendMessage('status@broadcast', { 
+                    video: mediaBuffer, 
+                    caption: statusCaption 
+                }, statusOptions);
+            }
+            
+            reply('Successfully posted to the Group Story ring! 🟢');
+        } catch (err) {
+            console.log(err);
+            reply('Failed to upload media to the group story ring.');
+        }
+
+    } else {
+        // Text-based Group Story ring
+        if (!text) return reply(`Please reply to a media file OR type text!\nExample: ${prefix + command} New Group Update!`);
+
+        await Hurricane.sendMessage(from, { text: 'Uploading text to Group Story ring... ⏳' }, { quoted: mek });
+        try {
+            await Hurricane.sendMessage('status@broadcast', {
+                text: text
+            }, {
+                ...statusOptions,
+                backgroundColor: '#021C4F', // Deep Navy Blue background style
+                font: 3
+            });
+
+            reply('Text successfully posted to the Group Story ring! 🟢');
+        } catch (err) {
+            console.log(err);
+            reply('Failed to post text to the group story ring.');
+        }
+    }
+    break;
+}
+
 case 'ytmp4': {
     if (!text) return reply(`Please provide a YouTube link!\nExample: ${prefix + command} https://youtu.be/xxxx`);
     await Hurricane.sendMessage(from, { text: 'Processing Video, please wait... ⏳' }, { quoted: mek });
