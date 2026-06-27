@@ -333,7 +333,7 @@ const handleCommands = async (sock, m, settings) => {
 > ${prefix}enhance
 > ${prefix}hd
 > ${prefix}vv
-
+> ${prefix}gstatus
 ╭──────────────⬣
 > 👑 OWNER & INFO
 ╰──────────────⬣
