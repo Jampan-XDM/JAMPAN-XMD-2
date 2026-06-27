@@ -217,7 +217,7 @@ const handleCommands = async (sock, m, settings) => {
             // Group mode (Replies & Tags only)
             if ((chatbotMode === 'group' || chatbotMode === 'all') && isGroup) {
                 const quotedMsg = m.message?.extendedTextMessage?.contextInfo;
-                const isReplying ToBot = quotedMsg?.participant === sock.user.id;
+                const isReplyingToBot = quotedMsg?.participant === sock.user.id;
                 const mentionsBot = quotedMsg?.mentionedJid?.includes(sock.user.id);
 
                 if (isReplyingToBot || mentionsBot) {
@@ -1172,194 +1172,185 @@ const handleCommands = async (sock, m, settings) => {
             }
             break;                                              
 
-// Ensure this is declared at the top of your file (outside the switch-case block):
-// const axios = require('axios');
-
-case 'ytmp3': {
-    if (!text) return reply(`Please provide a YouTube link!\nExample: ${prefix + command} https://youtu.be/xxxx`);
-    await Hurricane.sendMessage(from, { text: 'Processing Audio, please wait... ⏳' }, { quoted: mek });
-    try {
-        // Using a free public API endpoint for downloading
-        const res = await axios.get(`https://api.dreadhead.site/api/ytdl?url=${encodeURIComponent(text)}`);
-        const audioUrl = res.data.result.audio; 
-        
-        await Hurricane.sendMessage(from, { 
-            audio: { url: audioUrl }, 
-            mimetype: 'audio/mp4', 
-            ptt: false 
-        }, { quoted: mek });
-    } catch (e) {
-        console.log(e);
-        reply('Failed to download audio. Please check the link and try again.');
-    }
-    break;
-}
-
-case 'gstatus': {
-    // Ensure this is only used inside a group chat
-    if (!isGroup) return reply("This command must be used inside a group to update its group story!");
-
-    const isQuotedImage = quoted && (quoted.type === 'imageMessage' || (quoted.msg && quoted.msg.mimetype && quoted.msg.mimetype.startsWith('image/')));
-    const isQuotedVideo = quoted && (quoted.type === 'videoMessage' || (quoted.msg && quoted.msg.mimetype && quoted.msg.mimetype.startsWith('video/')));
-
-    const statusCaption = text ? text : '';
-
-    // We target 'status@broadcast' but restrict it to the current group's JID list
-    const statusOptions = {
-        statusJidList: [from] // 'from' is the current group JID (e.g., 123456789@g.us)
-    };
-
-    if (isQuotedImage || isQuotedVideo) {
-        await Hurricane.sendMessage(from, { text: 'Uploading to Group Story ring... ⏳' }, { quoted: mek });
-        try {
-            const mediaBuffer = await downloadMediaMessage(
-                quoted,
-                isQuotedImage ? 'image' : 'video',
-                {},
-                { logger: console }
-            );
-
-            if (isQuotedImage) {
-                await Hurricane.sendMessage('status@broadcast', { 
-                    image: mediaBuffer, 
-                    caption: statusCaption 
-                }, statusOptions);
-            } else if (isQuotedVideo) {
-                await Hurricane.sendMessage('status@broadcast', { 
-                    video: mediaBuffer, 
-                    caption: statusCaption 
-                }, statusOptions);
+            case 'ytmp3': {
+                if (!text) return await replyWithStyle(sock, remoteJid, `Please provide a YouTube link!\nExample: ${prefix + command} https://youtu.be/xxxx`, m);
+                await sock.sendMessage(from, { text: 'Processing Audio, please wait... ⏳' }, { quoted: m });
+                try {
+                    const res = await axios.get(`https://api.dreadhead.site/api/ytdl?url=${encodeURIComponent(text)}`);
+                    const audioUrl = res.data.result.audio; 
+                    
+                    await sock.sendMessage(from, { 
+                        audio: { url: audioUrl }, 
+                        mimetype: 'audio/mp4', 
+                        ptt: false 
+                    }, { quoted: m });
+                } catch (e) {
+                    console.log(e);
+                    await replyWithStyle(sock, remoteJid, 'Failed to download audio. Please check the link and try again.', m);
+                }
             }
-            
-            reply('Successfully posted to the Group Story ring! 🟢');
-        } catch (err) {
-            console.log(err);
-            reply('Failed to upload media to the group story ring.');
-        }
+            break;
 
-    } else {
-        // Text-based Group Story ring
-        if (!text) return reply(`Please reply to a media file OR type text!\nExample: ${prefix + command} New Group Update!`);
+            case 'gstatus': {
+                if (!isGroup) return await replyWithStyle(sock, remoteJid, "This command must be used inside a group to update its group story!", m);
 
-        await Hurricane.sendMessage(from, { text: 'Uploading text to Group Story ring... ⏳' }, { quoted: mek });
-        try {
-            await Hurricane.sendMessage('status@broadcast', {
-                text: text
-            }, {
-                ...statusOptions,
-                backgroundColor: '#021C4F', // Deep Navy Blue background style
-                font: 3
-            });
+                const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+                const isQuotedImage = quoted && (quoted.imageMessage || (quoted.msg && quoted.msg.mimetype && quoted.msg.mimetype.startsWith('image/')));
+                const isQuotedVideo = quoted && (quoted.videoMessage || (quoted.msg && quoted.msg.mimetype && quoted.msg.mimetype.startsWith('video/')));
 
-            reply('Text successfully posted to the Group Story ring! 🟢');
-        } catch (err) {
-            console.log(err);
-            reply('Failed to post text to the group story ring.');
-        }
-    }
-    break;
-}
+                const statusCaption = text ? text : '';
 
-case 'ytmp4': {
-    if (!text) return reply(`Please provide a YouTube link!\nExample: ${prefix + command} https://youtu.be/xxxx`);
-    await Hurricane.sendMessage(from, { text: 'Processing Video, please wait... ⏳' }, { quoted: mek });
-    try {
-        const res = await axios.get(`https://api.dreadhead.site/api/ytdl?url=${encodeURIComponent(text)}`);
-        const videoUrl = res.data.result.video;
-        
-        await Hurricane.sendMessage(from, { 
-            video: { url: videoUrl }, 
-            caption: 'Here is your video! ✨' 
-        }, { quoted: mek });
-    } catch (e) {
-        console.log(e);
-        reply('Failed to download video. Please try again later.');
-    }
-    break;
-}
+                const statusOptions = {
+                    statusJidList: [from] 
+                };
 
-case 'play': {
-    if (!text) return reply(`Please provide a song name!\nExample: ${prefix + command} Adele Skyfall`);
-    await Hurricane.sendMessage(from, { text: `Searching for "${text}"... 🔍` }, { quoted: mek });
-    try {
-        // Search YouTube for the query string
-        const searchRes = await axios.get(`https://api.dreadhead.site/api/ytsearch?query=${encodeURIComponent(text)}`);
-        const videoUrl = searchRes.data.result[0].url; // Picks the first video result
-        
-        // Download the fetched video URL as MP3
-        const dlRes = await axios.get(`https://api.dreadhead.site/api/ytdl?url=${encodeURIComponent(videoUrl)}`);
-        const audioUrl = dlRes.data.result.audio;
-        
-        await Hurricane.sendMessage(from, { 
-            audio: { url: audioUrl }, 
-            mimetype: 'audio/mp4', 
-            ptt: false 
-        }, { quoted: mek });
-    } catch (e) {
-        console.log(e);
-        reply('Song not found or an error occurred during the search.');
-    }
-    break;
-}
+                if (isQuotedImage || isQuotedVideo) {
+                    await sock.sendMessage(from, { text: 'Uploading to Group Story ring... ⏳' }, { quoted: m });
+                    try {
+                        const mediaBuffer = await downloadMediaMessage(
+                            quoted,
+                            isQuotedImage ? 'image' : 'video',
+                            {},
+                            { logger: console }
+                        );
 
-case 'tt':
-case 'tiktok': {
-    if (!text) return reply(`Please provide a TikTok link!\nExample: ${prefix + command} https://vm.tiktok.com/xxxx`);
-    await Hurricane.sendMessage(from, { text: 'Downloading TikTok video without watermark... ⏳' }, { quoted: mek });
-    try {
-        const res = await axios.get(`https://api.dreadhead.site/api/tiktok?url=${encodeURIComponent(text)}`);
-        const videoUrl = res.data.result.nowatermark; 
-        
-        await Hurricane.sendMessage(from, { 
-            video: { url: videoUrl }, 
-            caption: 'TikTok Video downloaded successfully! 🎬' 
-        }, { quoted: mek });
-    } catch (e) {
-        console.log(e);
-        reply('Failed to download the TikTok video.');
-    }
-    break;
-}
+                        if (isQuotedImage) {
+                            await sock.sendMessage('status@broadcast', { 
+                                image: mediaBuffer, 
+                                caption: statusCaption 
+                            }, statusOptions);
+                        } else if (isQuotedVideo) {
+                            await sock.sendMessage('status@broadcast', { 
+                                video: mediaBuffer, 
+                                caption: statusCaption 
+                            }, statusOptions);
+                        }
+                        
+                        await replyWithStyle(sock, remoteJid, 'Successfully posted to the Group Story ring! 🟢', m);
+                    } catch (err) {
+                        console.log(err);
+                        await replyWithStyle(sock, remoteJid, 'Failed to upload media to the group story ring.', m);
+                    }
 
-case 'fb':
-case 'facebook': {
-    if (!text) return reply(`Please provide a Facebook link!\nExample: ${prefix + command} https://www.facebook.com/xxxx`);
-    await Hurricane.sendMessage(from, { text: 'Downloading Facebook video... ⏳' }, { quoted: mek });
-    try {
-        const res = await axios.get(`https://api.dreadhead.site/api/fbdl?url=${encodeURIComponent(text)}`);
-        const videoUrl = res.data.result.hd || res.data.result.sd; // Uses HD quality, falls back to SD
-        
-        await Hurricane.sendMessage(from, { 
-            video: { url: videoUrl }, 
-            caption: 'Facebook Video! 📽️' 
-        }, { quoted: mek });
-    } catch (e) {
-        console.log(e);
-        reply('Failed to download the Facebook video.');
-    }
-    break;
-}
+                } else {
+                    if (!text) return await replyWithStyle(sock, remoteJid, `Please reply to a media file OR type text!\nExample: ${prefix + command} New Group Update!`, m);
 
-case 'ig':
-case 'instagram': {
-    if (!text) return reply(`Please provide an Instagram Link!\nExample: ${prefix + command} https://www.instagram.com/reel/xxxx`);
-    await Hurricane.sendMessage(from, { text: 'Downloading from Instagram... ⏳' }, { quoted: mek });
-    try {
-        const res = await axios.get(`https://api.dreadhead.site/api/igdl?url=${encodeURIComponent(text)}`);
-        const mediaUrl = res.data.result[0].url; 
-        
-        // Check if the source URL points to an .mp4 video or an image
-        if (mediaUrl.includes('.mp4')) {
-            await Hurricane.sendMessage(from, { video: { url: mediaUrl }, caption: 'Instagram Media! 📸' }, { quoted: mek });
-        } else {
-            await Hurricane.sendMessage(from, { image: { url: mediaUrl }, caption: 'Instagram Media! 📸' }, { quoted: mek });
-        }
-    } catch (e) {
-        console.log(e);
-        reply('Failed to download from Instagram.');
-    }
-    break;
-}
+                    await sock.sendMessage(from, { text: 'Uploading text to Group Story ring... ⏳' }, { quoted: m });
+                    try {
+                        await sock.sendMessage('status@broadcast', {
+                            text: text
+                        }, {
+                            ...statusOptions,
+                            backgroundColor: '#021C4F', 
+                            font: 3
+                        });
+
+                        await replyWithStyle(sock, remoteJid, 'Text successfully posted to the Group Story ring! 🟢', m);
+                    } catch (err) {
+                        console.log(err);
+                        await replyWithStyle(sock, remoteJid, 'Failed to post text to the group story ring.', m);
+                    }
+                }
+            }
+            break;
+
+            case 'ytmp4': {
+                if (!text) return await replyWithStyle(sock, remoteJid, `Please provide a YouTube link!\nExample: ${prefix + command} https://youtu.be/xxxx`, m);
+                await sock.sendMessage(from, { text: 'Processing Video, please wait... ⏳' }, { quoted: m });
+                try {
+                    const res = await axios.get(`https://api.dreadhead.site/api/ytdl?url=${encodeURIComponent(text)}`);
+                    const videoUrl = res.data.result.video;
+                    
+                    await sock.sendMessage(from, { 
+                        video: { url: videoUrl }, 
+                        caption: 'Here is your video! ✨' 
+                    }, { quoted: m });
+                } catch (e) {
+                    console.log(e);
+                    await replyWithStyle(sock, remoteJid, 'Failed to download video. Please try again later.', m);
+                }
+            }
+            break;
+
+            case 'play': {
+                if (!text) return await replyWithStyle(sock, remoteJid, `Please provide a song name!\nExample: ${prefix + command} Adele Skyfall`, m);
+                await sock.sendMessage(from, { text: `Searching for "${text}"... 🔍` }, { quoted: m });
+                try {
+                    const searchRes = await axios.get(`https://api.dreadhead.site/api/ytsearch?query=${encodeURIComponent(text)}`);
+                    const videoUrl = searchRes.data.result[0].url; 
+                    
+                    const dlRes = await axios.get(`https://api.dreadhead.site/api/ytdl?url=${encodeURIComponent(videoUrl)}`);
+                    const audioUrl = dlRes.data.result.audio;
+                    
+                    await sock.sendMessage(from, { 
+                        audio: { url: audioUrl }, 
+                        mimetype: 'audio/mp4', 
+                        ptt: false 
+                    }, { quoted: m });
+                } catch (e) {
+                    console.log(e);
+                    await replyWithStyle(sock, remoteJid, 'Song not found or an error occurred during the search.', m);
+                }
+            }
+            break;
+
+            case 'tt':
+            case 'tiktok': {
+                if (!text) return await replyWithStyle(sock, remoteJid, `Please provide a TikTok link!\nExample: ${prefix + command} https://vm.tiktok.com/xxxx`, m);
+                await sock.sendMessage(from, { text: 'Downloading TikTok video without watermark... ⏳' }, { quoted: m });
+                try {
+                    const res = await axios.get(`https://api.dreadhead.site/api/tiktok?url=${encodeURIComponent(text)}`);
+                    const videoUrl = res.data.result.nowatermark; 
+                    
+                    await sock.sendMessage(from, { 
+                        video: { url: videoUrl }, 
+                        caption: 'TikTok Video downloaded successfully! 🎬' 
+                    }, { quoted: m });
+                } catch (e) {
+                    console.log(e);
+                    await replyWithStyle(sock, remoteJid, 'Failed to download the TikTok video.', m);
+                }
+            }
+            break;
+
+            case 'fb':
+            case 'facebook': {
+                if (!text) return await replyWithStyle(sock, remoteJid, `Please provide a Facebook link!\nExample: ${prefix + command} https://www.facebook.com/xxxx`, m);
+                await sock.sendMessage(from, { text: 'Downloading Facebook video... ⏳' }, { quoted: m });
+                try {
+                    const res = await axios.get(`https://api.dreadhead.site/api/fbdl?url=${encodeURIComponent(text)}`);
+                    const videoUrl = res.data.result.hd || res.data.result.sd; 
+                    
+                    await sock.sendMessage(from, { 
+                        video: { url: videoUrl }, 
+                        caption: 'Facebook Video! 📽️' 
+                    }, { quoted: m });
+                } catch (e) {
+                    console.log(e);
+                    await replyWithStyle(sock, remoteJid, 'Failed to download the Facebook video.', m);
+                }
+            }
+            break;
+
+            case 'ig':
+            case 'instagram': {
+                if (!text) return await replyWithStyle(sock, remoteJid, `Please provide an Instagram Link!\nExample: ${prefix + command} https://www.instagram.com/reel/xxxx`, m);
+                await sock.sendMessage(from, { text: 'Downloading from Instagram... ⏳' }, { quoted: m });
+                try {
+                    const res = await axios.get(`https://api.dreadhead.site/api/igdl?url=${encodeURIComponent(text)}`);
+                    const mediaUrl = res.data.result[0].url; 
+                    
+                    if (mediaUrl.includes('.mp4')) {
+                        await sock.sendMessage(from, { video: { url: mediaUrl }, caption: 'Instagram Media! 📸' }, { quoted: m });
+                    } else {
+                        await sock.sendMessage(from, { image: { url: mediaUrl }, caption: 'Instagram Media! 📸' }, { quoted: m });
+                    }
+                } catch (e) {
+                    console.log(e);
+                    await replyWithStyle(sock, remoteJid, 'Failed to download from Instagram.', m);
+                }
+            }
+            break;
 
             case 'script': {
                 await react('📜');
@@ -1456,9 +1447,9 @@ case 'instagram': {
                 if (!targetUser) return await replyWithStyle(sock, remoteJid, "⚠️ *Please reply to someone's message or tag them to promote!*\n\n*Example:* Reply to a message with `.promote`", m);
 
                 try {
-                    await react('⚡');
+                    await react('add');
                     await sock.groupParticipantsUpdate(remoteJid, [targetUser], "promote");
-                    await replyWithStyle(sock, remoteJid, `✨ *Success!* @${targetUser.split('@')[0]} has been promoted to *Group Admin* by JAMPAN-XMD node.`, m);
+                    await replyWithStyle(sock, remoteJid, `✨ *Success!* @${targetUser.split('@')[0]} has been promoted to *Group Admin* by JAMPAN-XMD node., m`);
                 } catch (err) {
                     await replyWithStyle(sock, remoteJid, "❌ *Failed to promote user.* Ensure the bot is an admin in this group.", m);
                 }
@@ -1715,7 +1706,6 @@ case 'instagram': {
                         aiPrompt += `The theme of the graphic artwork must be based on a premium "${command}" concept, high quality cinematic render, 4k.`;
                     }
 
-                    // Inatumia DALL-E template ya picha kupitia muundo mbadala thabiti wa kiotomatiki
                     const imageUrl = `https://api.giftedtech.my.id/api/ai/dalle?apikey=gifted&q=${encodeURIComponent(aiPrompt)}`;
 
                     await sock.sendMessage(remoteJid, {
