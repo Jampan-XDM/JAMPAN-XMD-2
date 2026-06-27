@@ -1,4 +1,4 @@
-const { proto, getContentType, makeCacheableSignalKeyStore, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const { proto, getContentType, makeCacheableSignalKeyStore, useMultiFileAuthState, downloadMediaMessage } = require('@whiskeysockets/baileys');
 const makeWASocket = require('@whiskeysockets/baileys').default;
 const fs = require('fs');
 const fsExtra = require('fs-extra');
@@ -11,6 +11,9 @@ const config = require('./config');
 const prefix = config.PREFIX || '.';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Global Message Cache for Anti-Delete Tracker
+if (!global.msgCache) global.msgCache = new Map();
 
 // ================================
 // RUNTIME FORMATTER
@@ -99,6 +102,84 @@ const handleCommands = async (sock, m, settings) => {
         else if (messageType === 'imageMessage') body = m.message.imageMessage.caption;
         else if (messageType === 'videoMessage') body = m.message.videoMessage.caption;
 
+        // ============================================
+        // 🛡️ ANTI-DELETE CACHE LAYER & RETRIEVER ENGINE
+        // ============================================
+        
+        // 1. Save every incoming message into cache memory (Lasts 2 hours)
+        if (m.key && m.key.id) {
+            global.msgCache.set(m.key.id, m);
+            setTimeout(() => global.msgCache.delete(m.key.id), 2 * 60 * 60 * 1000);
+        }
+
+        // 2. Intercept and retrieve deleted messages (Revoke Detector)
+        if (messageType === 'protocolMessage' && m.message.protocolMessage.type === 3) {
+            // Check if feature tracking is globally enabled (defaults to true if undefined)
+            if (global.antidelete !== false) {
+                const revokedKey = m.message.protocolMessage.key;
+                const deletedMessage = global.msgCache.get(revokedKey.id);
+
+                if (deletedMessage) {
+                    const deletedSender = revokedKey.participant || revokedKey.remoteJid;
+                    const deleteTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    
+                    let reportText = `*⚠️ ANTI-DELETE RETRIEVER ⚠️*\n`;
+                    reportText += `*──────────────────────────────*\n`;
+                    reportText += `*👤 Deleted By:* @${deletedSender.split('@')[0]}\n`;
+                    reportText += `*🕒 Time Deleted:* ${deleteTime}\n`;
+                    reportText += `*💬 Chat Type:* ${isGroup ? 'Group Chat' : 'Direct Message (DM)'}\n`;
+                    reportText += `*──────────────────────────────*\n\n`;
+
+                    const originalMsg = deletedMessage.message;
+                    const originalType = Object.keys(originalMsg || {})[0];
+
+                    try {
+                        if (originalType === 'conversation' || originalType === 'extendedTextMessage') {
+                            const textContent = originalMsg.conversation || originalMsg.extendedTextMessage.text;
+                            reportText += `*📝 Deleted Text:* ${textContent}`;
+                            
+                            await sock.sendMessage(revokedKey.remoteJid, { 
+                                text: reportText, 
+                                mentions: [deletedSender] 
+                            }, { quoted: deletedMessage });
+
+                        } else if (originalType === 'imageMessage') {
+                            const caption = originalMsg.imageMessage.caption ? originalMsg.imageMessage.caption : 'No Caption';
+                            reportText += `*📸 Deleted Media:* Image\n*Caption:* ${caption}`;
+                            
+                            const mediaBuffer = await downloadMediaMessage(deletedMessage, 'image', {}, { logger: pino() });
+                            await sock.sendMessage(revokedKey.remoteJid, { 
+                                image: mediaBuffer, 
+                                caption: reportText, 
+                                mentions: [deletedSender] 
+                            });
+
+                        } else if (originalType === 'videoMessage') {
+                            const caption = originalMsg.videoMessage.caption ? originalMsg.videoMessage.caption : 'No Caption';
+                            reportText += `*🎥 Deleted Media:* Video\n*Caption:* ${caption}`;
+                            
+                            const mediaBuffer = await downloadMediaMessage(deletedMessage, 'video', {}, { logger: pino() });
+                            await sock.sendMessage(revokedKey.remoteJid, { 
+                                video: mediaBuffer, 
+                                caption: reportText, 
+                                mentions: [deletedSender] 
+                            });
+                            
+                        } else if (originalType === 'stickerMessage') {
+                            reportText += `*🗿 Deleted Media:* Sticker`;
+                            await sock.sendMessage(revokedKey.remoteJid, { text: reportText, mentions: [deletedSender] });
+                            
+                            const mediaBuffer = await downloadMediaMessage(deletedMessage, 'sticker', {}, { logger: pino() });
+                            await sock.sendMessage(revokedKey.remoteJid, { sticker: mediaBuffer });
+                        }
+                    } catch (err) {
+                        console.log("Anti-delete media decoding error:", err.message);
+                    }
+                }
+            }
+        }
+
+        // --- CONTINUATION OF STANDALONE PROCESSING ---
         if (!body) return;
 
         // --- FUNCTION REACT ---
@@ -137,7 +218,7 @@ const handleCommands = async (sock, m, settings) => {
             // Group mode (Replies & Tags only)
             if ((chatbotMode === 'group' || chatbotMode === 'all') && isGroup) {
                 const quotedMsg = m.message?.extendedTextMessage?.contextInfo;
-                const isReplyingToBot = quotedMsg?.participant === sock.user.id;
+                const isReplying ToBot = quotedMsg?.participant === sock.user.id;
                 const mentionsBot = quotedMsg?.mentionedJid?.includes(sock.user.id);
 
                 if (isReplyingToBot || mentionsBot) {
