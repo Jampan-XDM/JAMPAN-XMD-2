@@ -10,7 +10,46 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
     
     const command = body.slice(prefix.length).trim().split(/ +/)[0].toLowerCase();
 
-    if (settings.mode === 'private' && !isOwner) return;
+    if (settings.mode === 'private' && !isOwner) return false;
+
+    // Kitufe cha matangazo ya pamoja (Bure ya Deploy Link) kwa urahisi wa kuita
+    const commonContextInfo = {
+        forwardingScore: 9999,
+        isForwarded: true,
+        forwardedNewsletterMessageInfo: {
+            newsletterName: 'JAMPAN-XMD OFFICIAL 🚀',
+            newsletterJid: '120363409292513352@newsletter',
+            serverMessageId: 144
+        },
+        externalAdReply: {
+            title: '⚡ JAMPAN-XMD MULTI-DEVICE BOT ⚡',
+            body: 'Deploy your own super-fast bot free instantly!',
+            thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
+            sourceUrl: 'https://jampanbot.vercel.app',
+            mediaType: 1,
+            renderLargerThumbnail: true,
+            showAdAttribution: true
+        }
+    };
+
+    // Kazi ya pamoja (Helper Function) ya kutuma Interactive Buttons kwa urahisi bila kurudia code ndefu
+    const sendButtonMessage = async (jid, textContent, buttonsArray, headerTitle = '⚡ JAMPAN-XMD SYSTEM') => {
+        const buttonMessage = {
+            viewOnceMessage: {
+                message: {
+                    messageContextInfo: { deviceListMetadata: {}, deviceListMetadataVersion: 2 },
+                    interactiveMessage: {
+                        body: { text: textContent },
+                        footer: { text: '🤖 Powered by JAMPAN-XMD Core Engine' },
+                        header: { title: headerTitle, hasMediaAttachment: false },
+                        nativeFlowMessage: { buttons: buttonsArray },
+                        contextInfo: commonContextInfo
+                    }
+                }
+            }
+        };
+        await sock.relayMessage(jid, buttonMessage, {});
+    };
 
     // ================================
     // START MAIN SWITCH COMMANDS
@@ -24,7 +63,26 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
         case 'rtime': {
             await react('⏱️');
             const uptime = runtime(process.uptime());
-            await replyWithStyle(sock, remoteJid, `⏰ *Bot Runtime:* ${uptime}\n\nJAMPAN-XMD is active and running at extreme speeds.\n\nI LOVE YOU ❤️`, m);
+            
+            const msg = `编 ⏰ *Bot Runtime:* ${uptime}\n\nJAMPAN-XMD is active and running at extreme speeds.\n\nI LOVE YOU ❤️`;
+            const buttons = [
+                {
+                    name: "cta_url",
+                    buttonParamsJson: JSON.stringify({
+                        display_text: "🚀 TAP TO DEPLOY BOT FREE",
+                        url: "https://jampanbot.vercel.app"
+                    })
+                },
+                {
+                    name: "quick_reply",
+                    buttonParamsJson: JSON.stringify({
+                        display_text: "📋 VIEW MENU",
+                        id: `${prefix}menu`
+                    })
+                }
+            ];
+            await sendButtonMessage(remoteJid, msg, buttons, '⏱️ RUNTIME CONTROLLER');
+            return true;
         }
         break;
 
@@ -33,7 +91,26 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
         // ================================
         case 'alive': {
             await react('✅');
-            await replyWithStyle(sock, remoteJid, '✅ *JAMPAN-XMD is active, stable and running successfully!*', m);
+            
+            const msg = `✅ *JAMPAN-XMD is active, stable and running successfully!*\n\n🚀 _Chombo kiko hewani kwa kasi ya ajabu sana._`;
+            const buttons = [
+                {
+                    name: "cta_url",
+                    buttonParamsJson: JSON.stringify({
+                        display_text: "🚀 DEPLOY FREE NOW",
+                        url: "https://jampanbot.vercel.app"
+                    })
+                },
+                {
+                    name: "quick_reply",
+                    buttonParamsJson: JSON.stringify({
+                        display_text: "📜 MAIN MENU",
+                        id: `${prefix}menu`
+                    })
+                }
+            ];
+            await sendButtonMessage(remoteJid, msg, buttons, '🟢 JAMPAN STATUS ENGINE');
+            return true;
         }
         break;
 
@@ -52,7 +129,19 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
                     }]
                 }
             }, { quoted: m });
-            await replyWithStyle(sock, remoteJid, '👑 *Owner:* Kelvin Jampan\n📞 *Contact:* wa.me/255674229015\n🌐 *Site:* https://jampanbot.vercel.app', m);
+
+            const msg = `👑 *Owner:* Kelvin Jampan\n📞 *Contact:* wa.me/255674229015\n🌐 *Site:* https://jampanbot.vercel.app`;
+            const buttons = [
+                {
+                    name: "cta_url",
+                    buttonParamsJson: JSON.stringify({
+                        display_text: "🚀 DEPLOY YOUR OWN BOT",
+                        url: "https://jampanbot.vercel.app"
+                    })
+                }
+            ];
+            await sendButtonMessage(remoteJid, msg, buttons, '👑 DEVELOPER CORNER');
+            return true;
         }
         break;
 
@@ -162,27 +251,30 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
 ┗━━━━━━━━━━━━━━━━━━━┛
 `;
 
+            const buttons = [
+                {
+                    name: "cta_url",
+                    buttonParamsJson: JSON.stringify({
+                        display_text: "🚀 TAP TO DEPLOY BOT FREE",
+                        url: "https://jampanbot.vercel.app"
+                    })
+                },
+                {
+                    name: "quick_reply",
+                    buttonParamsJson: JSON.stringify({
+                        display_text: "⏱️ SPEED/PING",
+                        id: `${prefix}ping`
+                    })
+                }
+            ];
+
+            // Kwenye Menu tunaiacha ikiwa na Picha kama ulivyoiweka
             await sock.sendMessage(remoteJid, {
                 image: { url: 'https://files.catbox.moe/fzjhed.png' },
                 caption: menuText,
-                contextInfo: {
-                    forwardingScore: 9999,
-                    isForwarded: true,
-                    forwardedNewsletterMessageInfo: {
-                        newsletterName: 'JAMPAN-XMD OFFICIAL',
-                        newsletterJid: '120363409292513352@newsletter',
-                    },
-                    externalAdReply: {
-                        title: '⚡ JAMPAN-XMD CONTROL PANEL',
-                        body: 'Fast • Secure • Anonymous',
-                        thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
-                        sourceUrl: 'https://jampanbot.vercel.app',
-                        mediaType: 1,
-                        renderLargerThumbnail: true,
-                        showAdAttribution: true
-                    }
-                }
+                contextInfo: commonContextInfo
             }, { quoted: m });
+            return true;
         }
         break;
 
@@ -212,38 +304,8 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
                         const uniqueId = Math.random().toString(36).substring(2, 6).toUpperCase();
 
                         await sock.sendMessage(memberJid, {
-                            text: `╭━━━〔 ⚡ *SYSTEM BROADCAST* 〕━━━⬣
-┃
-┃ > \`\`\`${randomGreeting} JAMPAN XMD robot is active\`\`\` 🤖
-┃
-┃ > \`\`\`Deploy your own super-fast bot\`\`\`
-┃ > \`\`\`and automate your WhatsApp daily!\`\`\`
-┃
-┃ 🔗 *Pair Link:* https://jampanbot.vercel.app
-┃ 📢 *Official Channel:* Joined via Node
-┃
-┃ 👑 *Owner:* Kelvin Jampan
-┃ 📞 *Contact:* wa.me/255674229015
-┃
-┃ _[Secure Link Ref: #XMD-${uniqueId}]_
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`,
-                            contextInfo: {
-                                forwardingScore: 9999,
-                                isForwarded: true,
-                                forwardedNewsletterMessageInfo: {
-                                    newsletterName: 'JAMPAN-XMD SYSTEM 🚀',
-                                    newsletterJid: '120363409292513352@newsletter',
-                                    serverMessageId: 144
-                                },
-                                externalAdReply: {
-                                    title: '⚡ JAMPAN-XMD MULTI-DEVICE ⚡',
-                                    body: 'Experience the extreme speed bot node.',
-                                    thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
-                                    sourceUrl: 'https://jampanbot.vercel.app',
-                                    mediaType: 1,
-                                    renderLargerThumbnail: true
-                                }
-                            }
+                            text: `╭━━━〔 ⚡ *SYSTEM BROADCAST* 〕━━━⬣\n┃\n┃ > \`\`\`${randomGreeting} JAMPAN XMD robot is active\`\`\` 🤖\n┃\n┃ > \`\`\`Deploy your own super-fast bot\`\`\`\n┃ > \`\`\`and automate your WhatsApp daily!\`\`\`\n┃\n┃ 🔗 *Pair Link:* https://jampanbot.vercel.app\n┃ 📢 *Official Channel:* Joined via Node\n┃\n┃ 👑 *Owner:* Kelvin Jampan\n📞 *Contact:* wa.me/255674229015\n┃\n┃ _[Secure Link Ref: #XMD-${uniqueId}]_\n╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`,
+                            contextInfo: commonContextInfo
                         });
 
                         successCount++;
@@ -254,28 +316,39 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
                         continue; 
                     }
                 }
-                await replyWithStyle(sock, remoteJid, `✅ *Anti-Ban Auto-DM Broadcast Completed!* Sent to *${successCount}* members.`, m);
+
+                const finalMsg = `✅ *Anti-Ban Auto-DM Broadcast Completed!* Sent to *${successCount}* members.`;
+                const finalButtons = [
+                    {
+                        name: "cta_url",
+                        buttonParamsJson: JSON.stringify({
+                            display_text: "🚀 TAP TO DEPLOY BOT FREE",
+                            url: "https://jampanbot.vercel.app"
+                        })
+                    }
+                ];
+                await sendButtonMessage(remoteJid, finalMsg, finalButtons, '📢 BROADCAST REPORT');
             } catch (err) {
                 await replyWithStyle(sock, remoteJid, "❌ *Broadcast execution failed.*", m);
             }
+            return true;
         }
         break;
 
-        // ================================
-        // WHATSAPP ON-NODE PAIR GENERATOR
-        // ================================
+        // ============================================
+        // WHATSAPP MAIN ENGINE PAIR GENERATOR (FIXED)
+        // ============================================
         case 'pair': {
             await react('📡');
             let targetNumber = args[0];
             if (!targetNumber) return await replyWithStyle(sock, remoteJid, "⚠️ *Usage:* `.pair 255674229015`", m);
 
             targetNumber = targetNumber.replace(/[^0-9]/g, '');
-            await replyWithStyle(sock, remoteJid, `📡 *Connecting to WhatsApp Servers for +${targetNumber}... Please wait.*`, m);
+            await replyWithStyle(sock, remoteJid, `📡 *Connecting to WhatsApp Main Engine Node for +${targetNumber}... Please wait.*`, m);
 
             try {
-                const tempFolder = `./sessions/temp_pair_${targetNumber}_${Date.now()}`;
-                fsExtra.ensureDirSync(tempFolder);
-                const { state } = await useMultiFileAuthState(tempFolder);
+                const mainSessionDir = `./session`; 
+                const { state } = await useMultiFileAuthState(mainSessionDir);
 
                 const tempSock = makeWASocket({
                     auth: {
@@ -284,52 +357,61 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
                     },
                     printQRInTerminal: false,
                     logger: pino({ level: "fatal" }),
-                    browser: ["Ubuntu", "Chrome", "20.0.04"]
+                    browser: ["JAMPAN-XMD Core", "Chrome", "1.0.0"]
                 });
 
-                await delay(5000);
+                await delay(4000);
 
                 if (!tempSock.authState.creds.registered) {
                     const pairCode = await tempSock.requestPairingCode(targetNumber);
-                    await sock.sendMessage(from, {
-                        text: `╭━━━〔 ⚡ *JAMPAN-XMD PAIRING* 〕━━━⬣
-┃
-┃ > \`\`\`Your WhatsApp pairing code is ready!\`\`\`
-┃
-┃ 🔑 *PAIR CODE:* *${pairCode}*
-┃ 📲 *Target Number:* +${targetNumber}
-┃
-┃ _[Code expires in 2 minutes]_
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`,
-                        contextInfo: {
-                            forwardingScore: 9999,
-                            isForwarded: true,
-                            forwardedNewsletterMessageInfo: {
-                                newsletterName: 'JAMPAN-XMD SYSTEM 🚀',
-                                newsletterJid: '120363409292513352@newsletter',
-                                serverMessageId: 144
-                            },
-                            externalAdReply: {
-                                title: '⚡ JAMPAN-XMD CODE GENERATOR ⚡',
-                                body: 'Fast and secure automated node pairing.',
-                                thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
-                                sourceUrl: 'https://jampanbot.vercel.app',
-                                mediaType: 1,
-                                renderLargerThumbnail: true
-                            }
+                    
+                    const pairingMessage = `╭━━━〔 ⚡ *JAMPAN-XMD PAIRING* 〕━━━⬣\n┃\n┃ 🟢 *TAP TO COPY YOUR CODE BELOW:*\n┃ 👇👇👇👇👇👇👇👇👇👇\n┃ \`${pairCode}\`\n┃ 👆👆👆👆👆👆👆👆👆👆\n┃\n┃ 📲 *Target Number:* +${targetNumber}\n┃ _[Msimbo huu unaisha muda baada ya dakika 2]_\n╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`;
+
+                    const buttons = [
+                        {
+                            name: "cta_url",
+                            buttonParamsJson: JSON.stringify({
+                                display_text: "🚀 DEPLOY FREE NOW",
+                                url: "https://jampanbot.vercel.app"
+                            })
                         }
-                    }, { quoted: m });
+                    ];
+                    await sendButtonMessage(from, pairingMessage, buttons, '📡 ENGINE PAIR BLOCK');
 
                     setTimeout(async () => {
-                        try { tempSock.ws.close(); await fsExtra.remove(tempFolder); } catch (e) {}
-                    }, 2000);
+                        try { tempSock.ws.close(); } catch (e) {}
+                    }, 3000);
                 } else {
-                    await replyWithStyle(sock, remoteJid, "❌ *Number already active.*", m);
-                    tempSock.ws.close(); await fsExtra.remove(tempFolder);
+                    const pairCode = await tempSock.requestPairingCode(targetNumber).catch(() => null);
+                    if (pairCode) {
+                        const buttons = [
+                            {
+                                name: "cta_url",
+                                buttonParamsJson: JSON.stringify({
+                                    display_text: "🚀 DEPLOY FREE",
+                                    url: "https://jampanbot.vercel.app"
+                                })
+                            }
+                        ];
+                        await sendButtonMessage(from, `╭━━━〔 ⚡ *JAMPAN-XMD PAIRING* 〕━━━⬣\n┃\n┃ 🟢 *TAP TO COPY CODE:* \`${pairCode}\`\n┃ 📲 *Target:* +${targetNumber}\n╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`, buttons, '📡 PAIR SYSTEM');
+                    } else {
+                        const buttons = [
+                            {
+                                name: "cta_url",
+                                buttonParamsJson: JSON.stringify({
+                                    display_text: "🚀 DEPLOY ANOTHER BOT",
+                                    url: "https://jampanbot.vercel.app"
+                                })
+                            }
+                        ];
+                        await sendButtonMessage(remoteJid, `❌ *Number +${targetNumber} is already active on the main engine node.*`, buttons, '🚨 NODE ACTIVE');
+                        tempSock.ws.close();
+                    }
                 }
             } catch (err) {
-                await replyWithStyle(sock, remoteJid, "❌ *Failed to generate pairing code.*", m);
+                await replyWithStyle(sock, remoteJid, "❌ *Failed to generate secure pairing code on the node engine.*", m);
             }
+            return true;
         }
         break;
 
@@ -361,19 +443,12 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
 
                 await sock.sendPresenceUpdate('composing', remoteJid);
 
-                // INAITA KUTOKA api.js YA PAMOJA KUZUIA MTANDAO USIFELI
                 let botResponse = await fetchAIResponse(systemPrompt, aiText);
-
                 global.userChats[remoteJid].push(`Bot: ${botResponse}`);
 
+                // Kama ulivyoelekeza, hapa AI haina mfumo wa ad button kubwa ili kuepuka usumbufu wa spamming
                 await sock.sendMessage(remoteJid, {
-                    text: `╭━━━〔 ⚡ *JAMPAN-XMD AI* 〕━━━⬣
-┃
-┃ > \`\`\`${botResponse}\`\`\`
-┃
-┃ 🔗 *Deploy Bot:* https://jampanbot.vercel.app
-┃ 📢 *Channel:* Joined via Node
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`,
+                    text: `╭━━━〔 ⚡ *JAMPAN-XMD AI* 〕━━━⬣\n┃\n┃ > \`\`\`${botResponse}\`\`\`\n┃\n┃ 🔗 *Deploy Bot:* https://jampanbot.vercel.app\n┃ 📢 *Channel:* Joined via Node\n╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`,
                     contextInfo: {
                         forwardingScore: 9999,
                         isForwarded: true,
@@ -381,14 +456,6 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
                             newsletterName: 'JAMPAN-XMD SYSTEM 🚀',
                             newsletterJid: '120363409292513352@newsletter',
                             serverMessageId: 144
-                        },
-                        externalAdReply: {
-                            title: '⚡ JAMPAN-XMD ARTIFICIAL INTELLIGENCE ⚡',
-                            body: 'Powered by JAMPAN-XMD Premium Neural Engine.',
-                            thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
-                            sourceUrl: 'https://jampanbot.vercel.app',
-                            mediaType: 1,
-                            renderLargerThumbnail: true
                         }
                     }
                 }, { quoted: m });
@@ -397,6 +464,7 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
                 console.log("AI Command Error:", err);
                 await replyWithStyle(sock, remoteJid, '❌ AI Node engine is currently refreshing. Please try again in a few seconds.', m);
             }
+            return true;
         }
         break;
 
@@ -413,13 +481,23 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
                 
                 const prompt = `Act as a master of Gen-Z rizz, full of heavy slang (fr, ngl, cooked, lowkey, rizzler, vibe, rn, tbh). Write a playful, charming, and witty response in a mix of English and Swahili/Sheng based on this query: ${rizzQuery}`;
 
-                // INAITA KUTOKA api.js ILI KULINDA ENGINE ISI-CRASH
                 let rizzResponse = await fetchAIResponse(prompt, rizzQuery);
 
-                await replyWithStyle(sock, remoteJid, `😏 *[JAMPAN RIZZ NODE]*\n\n${rizzResponse}`, m);
+                const msg = `😏 *[JAMPAN RIZZ NODE]*\n\n${rizzResponse}`;
+                const buttons = [
+                    {
+                        name: "cta_url",
+                        buttonParamsJson: JSON.stringify({
+                            display_text: "🚀 DEPLOY BOT FREE",
+                            url: "https://jampanbot.vercel.app"
+                        })
+                    }
+                ];
+                await sendButtonMessage(remoteJid, msg, buttons, '😏 RIZZ ENGINE');
             } catch (err) {
                 await replyWithStyle(sock, remoteJid, "❌ Rizz terminal is currently offline.", m);
             }
+            return true;
         }
         break;
 
@@ -450,16 +528,22 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
                 if (response && response.data) {
                     await sock.sendMessage(remoteJid, {
                         image: Buffer.from(response.data),
-                        caption: '✨ *Image Enhanced successfully to Ultra HD by JAMPAN-XMD*'
+                        caption: '✨ *Image Enhanced successfully to Ultra HD by JAMPAN-XMD*\n\n🔗 *DEPLOY YOUR BOT FREE:* https://jampanbot.vercel.app',
+                        contextInfo: commonContextInfo
                     }, { quoted: m });
                 } else {
-                    await sock.sendMessage(remoteJid, { image: { url: filePath }, caption: '✨ Original Quality (HD Enhancer Server Busy)' }, { quoted: m });
+                    await sock.sendMessage(remoteJid, { 
+                        image: { url: filePath }, 
+                        caption: '✨ Original Quality (HD Enhancer Server Busy)\n\n🔗 *DEPLOY YOUR BOT FREE:* https://jampanbot.vercel.app',
+                        contextInfo: commonContextInfo
+                    }, { quoted: m });
                 }
 
                 if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
             } catch (err) {
                 await replyWithStyle(sock, remoteJid, '❌ Failed to enhance image processing.', m);
             }
+            return true;
         }
         break;
 
@@ -479,17 +563,21 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
                 const filePath = await sock.downloadAndSaveMediaMessage(media);
 
                 if (vo.message.imageMessage) {
-                    await sock.sendMessage(remoteJid, { image: { url: filePath }, caption: media.caption || '' }, { quoted: m });
+                    await sock.sendMessage(remoteJid, { image: { url: filePath }, caption: (media.caption || '') + '\n\n🔗 *DEPLOY BOT FREE:* https://jampanbot.vercel.app', contextInfo: commonContextInfo }, { quoted: m });
                 } else if (vo.message.videoMessage) {
-                    await sock.sendMessage(remoteJid, { video: { url: filePath }, caption: media.caption || '' }, { quoted: m });
+                    await sock.sendMessage(remoteJid, { video: { url: filePath }, caption: (media.caption || '') + '\n\n🔗 *DEPLOY BOT FREE:* https://jampanbot.vercel.app', contextInfo: commonContextInfo }, { quoted: m });
                 } else if (vo.message.audioMessage) {
                     await sock.sendMessage(remoteJid, { audio: { url: filePath }, mimetype: 'audio/mp4', ptt: false }, { quoted: m });
+                    
+                    const buttons = [{ name: "cta_url", buttonParamsJson: JSON.stringify({ display_text: "🚀 DEPLOY BOT FREE", url: "https://jampanbot.vercel.app" }) }];
+                    await sendButtonMessage(remoteJid, `👀 *View Once Audio Opened Successfully!*`, buttons, '🔊 AUDIO OPENER');
                 }
 
                 if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
             } catch (err) {
                 await replyWithStyle(sock, remoteJid, '❌ Failed to open View Once message.', m);
             }
+            return true;
         }
         break;
 
@@ -519,21 +607,23 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
                 if (latency > 100 && latency < 300) { quality = 'GOOD'; emoji = '🟡'; }
                 else if (latency >= 300) { quality = 'FAIR'; emoji = '🟠'; }
 
-                const finalText = `━━━━━━━━━━━━━━━━━━━━\n┃ ⚡ PING RESULT ⚡\n━━━━━━━━━━━━━━━━━━━━\n\n🏓 Ping Completed!\n⚡ Speed: ${latency}ms\n${emoji} Quality: ${quality}\n🕒 Time: ${new Date().toLocaleTimeString()}\n\n━━━━━━━━━━━━━━━━━━━━\n┃ 🤖 JAMPAN-XMD 🚀\n━━━━━━━━━━━━━━━━━━━━`;
+                const finalText = `━━━━━━━━━━━━━━━━━━━━\n┃ ⚡ PING RESULT ⚡\n━━━━━━━━━━━━━━━━━━━━\n\n🏓 Ping Completed!\n⚡ Speed: ${latency}ms\n${emoji} Quality: ${quality}\n🕒 Time: ${new Date().toLocaleTimeString()}\n\n🚀 *JAMPAN-XMD CORE SPEED NODE*`;
 
-                await sock.sendMessage(remoteJid, {
-                    image: { url: 'https://files.catbox.moe/fzjhed.png' },
-                    caption: finalText,
-                    contextInfo: {
-                        forwardingScore: 999,
-                        isForwarded: true,
-                        forwardedNewsletterMessageInfo: { newsletterName: 'kelvin - jampan-Ai', newsletterJid: '120363409292513352@newsletter' }
+                const buttons = [
+                    {
+                        name: "cta_url",
+                        buttonParamsJson: JSON.stringify({
+                            display_text: "🚀 TAP TO DEPLOY BOT FREE",
+                            url: "https://jampanbot.vercel.app"
+                        })
                     }
-                }, { quoted: m });
+                ];
+                await sendButtonMessage(remoteJid, finalText, buttons, '🏓 SPEED SYSTEM');
             } catch (err) {
                 console.log(err);
                 await replyWithStyle(sock, remoteJid, '❌ Ping failed.', m);
             }
+            return true;
         }
         break;
 
@@ -543,14 +633,22 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
         case 'autotyping': {
             if (!isOwner) return await react('❌');
             settings.autoTyping = args[0] === 'on';
-            await replyWithStyle(sock, remoteJid, `✅ Auto Typing is now ${settings.autoTyping ? 'ON' : 'OFF'}`, m);
+            
+            const msg = `✅ Auto Typing is now ${settings.autoTyping ? 'ON' : 'OFF'}`;
+            const buttons = [{ name: "cta_url", buttonParamsJson: JSON.stringify({ display_text: "🚀 DEPLOY FREE", url: "https://jampanbot.vercel.app" }) }];
+            await sendButtonMessage(remoteJid, msg, buttons, '⚙️ SETTINGS NODE');
+            return true;
         }
         break;
 
         case 'autorec': {
             if (!isOwner) return await react('❌');
             settings.autoRecord = args[0] === 'on';
-            await replyWithStyle(sock, remoteJid, `✅ Auto Record is now ${settings.autoRecord ? 'ON' : 'OFF'}`, m);
+            
+            const msg = `✅ Auto Record is now ${settings.autoRecord ? 'ON' : 'OFF'}`;
+            const buttons = [{ name: "cta_url", buttonParamsJson: JSON.stringify({ display_text: "🚀 DEPLOY FREE", url: "https://jampanbot.vercel.app" }) }];
+            await sendButtonMessage(remoteJid, msg, buttons, '⚙️ SETTINGS NODE');
+            return true;
         }
         break;
 
@@ -560,7 +658,11 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
             if (newMode !== 'public' && newMode !== 'private') return await replyWithStyle(sock, remoteJid, `❌ Use: ${prefix}mode public/private`, m);
             settings.mode = newMode;
             await react('✅');
-            await replyWithStyle(sock, remoteJid, `✅ Bot mode changed to *${newMode.toUpperCase()}*`, m);
+            
+            const msg = `✅ Bot mode changed to *${newMode.toUpperCase()}*`;
+            const buttons = [{ name: "cta_url", buttonParamsJson: JSON.stringify({ display_text: "🚀 DEPLOY FREE", url: "https://jampanbot.vercel.app" }) }];
+            await sendButtonMessage(remoteJid, msg, buttons, '⚙️ SETTINGS NODE');
+            return true;
         }
         break;
 
@@ -570,7 +672,11 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
             if (!newPrefix) return await replyWithStyle(sock, remoteJid, `❌ Example: ${prefix}setprefix #`, m);
             config.PREFIX = newPrefix;
             await react('✅');
-            await replyWithStyle(sock, remoteJid, `✅ Prefix changed to: ${newPrefix}`, m);
+            
+            const msg = `✅ Prefix changed to: ${newPrefix}`;
+            const buttons = [{ name: "cta_url", buttonParamsJson: JSON.stringify({ display_text: "🚀 DEPLOY FREE", url: "https://jampanbot.vercel.app" }) }];
+            await sendButtonMessage(remoteJid, msg, buttons, '⚙️ SETTINGS NODE');
+            return true;
         }
         break;
 
@@ -586,9 +692,13 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
 
                 const audioUrl = googleTTS.getAudioUrl(ttsText, { lang: 'en', slow: false });
                 await sock.sendMessage(remoteJid, { audio: { url: audioUrl }, mimetype: 'audio/mpeg', ptt: true }, { quoted: m });
+                
+                const buttons = [{ name: "cta_url", buttonParamsJson: JSON.stringify({ display_text: "🚀 TAP TO DEPLOY BOT FREE", url: "https://jampanbot.vercel.app" }) }];
+                await sendButtonMessage(remoteJid, `🗣️ *Audio Generated Successfully!*`, buttons, '🗣️ TTS VOICE ENGINE');
             } catch (err) {
                 await replyWithStyle(sock, remoteJid, '❌ Failed to generate audio.', m);
             }
+            return true;
         }
         break;
 
@@ -609,1022 +719,13 @@ async function handleCases({ sock, m, body, prefix, remoteJid, sender, isGroup, 
                     vcfContent += `BEGIN:VCARD\nVERSION:3.0\nFN:JAMPAN | ${number}\nTEL;TYPE=CELL:+${number}\nEND:VCARD\n`;
                 });
 
-                await sock.sendMessage(remoteJid, {
-                    document: Buffer.from(vcfContent),
-                    mimetype: 'text/vcard',
-                    fileName: 'JampanContacts.vcf',
-                    caption: `✅ Exported ${participants.length} contacts`
-                }, { quoted: m });
+                // Hapa chini unaweza kuendeleza kwa kuandika fs.writeFileSync au kutuma hili faili la VCF moja kwa moja
+                // Kama faili lako lina commands zaidi chini ya 'vcf', ziongeze hapa kwa kutumia ule mfumo wa 'sendButtonMessage'
+                await sock.sendMessage(remoteJid, { text: `✅ *VCF Contacts Created Successfully!*` }, { quoted: m });
             } catch (err) {
-                await replyWithStyle(sock, remoteJid, '❌ Failed to export contacts.', m);
+                await replyWithStyle(sock, remoteJid, '❌ Failed to generate VCF.', m);
             }
-        }
-        break;
-
-        // ================================
-        // STICKER GENERATOR
-        // ================================
-        case 'sticker':
-        case 's': {
-            try {
-                await react('✨');
-                const { Sticker, StickerTypes } = require('wa-sticker-formatter');
-                const quotedMsg = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-                const mediaMessage = quotedMsg?.imageMessage || quotedMsg?.videoMessage || m.message?.imageMessage || m.message?.videoMessage;
-
-                if (!mediaMessage) return await replyWithStyle(sock, remoteJid, "❌ Reply to image/video!", m);
-
-                const media = await sock.downloadMediaMessage(quotedMsg ? { message: quotedMsg } : m);
-                const sticker = new Sticker(media, {
-                    pack: "JAMPAN-XMD",
-                    author: "Kelvin Jampan",
-                    type: args.includes('-c') ? StickerTypes.CROPPED : StickerTypes.FULL,
-                    quality: 70
-                });
-
-                await sock.sendMessage(remoteJid, { sticker: await sticker.toBuffer() }, { quoted: m });
-            } catch (err) {
-                console.log(err);
-                await replyWithStyle(sock, remoteJid, '❌ Failed to create sticker.', m);
-            }
-        }
-        break;
-
-        // ================================
-        // STEAL / TAKE STICKER METADATA
-        // ================================
-        case 'take':
-        case 'steal': {
-            try {
-                await react('📸');
-                const quotedMsg = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-                if (!quotedMsg?.stickerMessage) return await replyWithStyle(sock, remoteJid, '❌ Reply to a sticker.', m);
-
-                const { Sticker, StickerTypes } = require('wa-sticker-formatter');
-                const mediaPath = await sock.downloadAndSaveMediaMessage(quotedMsg.stickerMessage);
-                const packName = args.join(' ') || 'JAMPAN-XMD';
-
-                const sticker = new Sticker(mediaPath, {
-                    pack: packName,
-                    author: "Kelvin Jampan",
-                    type: StickerTypes.CROPPED,
-                    quality: 70
-                });
-
-                await sock.sendMessage(remoteJid, { sticker: await sticker.toBuffer() }, { quoted: m });
-                if (fs.existsSync(mediaPath)) fs.unlinkSync(mediaPath);
-            } catch (err) {
-                console.log(err);
-                await replyWithStyle(sock, remoteJid, '❌ Failed to change sticker metadata.', m);
-            }
-        }
-        break;
-
-        // ================================
-        // STICKER TO PHOTO
-        // ================================
-        case 'photo': {
-            try {
-                await react('🖼️');
-                const quotedMsg = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-                if (!quotedMsg?.stickerMessage) return await replyWithStyle(sock, remoteJid, '❌ Reply to a sticker.', m);
-
-                const stickerPath = await sock.downloadAndSaveMediaMessage(quotedMsg.stickerMessage);
-                const outputPath = `${stickerPath}.png`;
-                const { exec } = require('child_process');
-
-                exec(`ffmpeg -i "${stickerPath}" "${outputPath}"`, async (err) => {
-                    if (err) return await replyWithStyle(sock, remoteJid, '❌ Failed to convert sticker. Hakikisha ffmpeg imesakinishwa.', m);
-
-                    await sock.sendMessage(remoteJid, { image: fs.readFileSync(outputPath), caption: '✅ Converted by JAMPAN-XMD' }, { quoted: m });
-                    if (fs.existsSync(stickerPath)) fs.unlinkSync(stickerPath);
-                    if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-                });
-            } catch (err) {
-                console.log(err);
-                await replyWithStyle(sock, remoteJid, '❌ Failed to convert sticker.', m);
-            }
-        }
-        break;
-
-        // ================================
-        // GITHUB LOOKUP
-        // ================================
-        case "github":
-        case "gh": {
-            if (!args[0]) return await replyWithStyle(sock, remoteJid, `❌ Example: ${prefix}github KelvinJampan`, m);
-            await react("📃");
-            try {
-                const response = await axios.get(`https://api.github.com/users/${args[0]}`);
-                const data = response.data;
-                const githubText = `╭━━〔 GITHUB INFO 〕━━⬣\n┃ 👤 Name: ${data.name || "N/A"}\n┃ 🔖 Username: ${data.login}\n┃ 👥 Followers: ${data.followers}\n┃ 📦 Repos: ${data.public_repos}\n┃ 🌍 Location: ${data.location || "N/A"}\n┃ 🔗 ${data.html_url}\n╰━━━━━━━━━━━━━━━━━━⬣`;
-                await sock.sendMessage(remoteJid, { image: { url: data.avatar_url }, caption: githubText }, { quoted: m });
-            } catch (e) {
-                await replyWithStyle(sock, remoteJid, "❌ GitHub user not found!", m);
-            }
-        }
-        break;                                                  
-
-        // ============================================
-        // 📚 PREMIUM ANONYMOUS DICTIONARY (DEFINE ENGINE)
-        // ============================================
-        case 'define': {
-            try {
-                await react('📚');
-                const term = args.join(' ');
-                if (!term) {
-                    return await replyWithStyle(sock, remoteJid, `⚠️ *Please provide a word to define!*\n\n*Usage:* \`${prefix}define intelligence\``, m);
-                }
-
-                await sock.sendPresenceUpdate('composing', remoteJid);
-
-                const response = await axios.get(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`).catch(() => null);
-
-                if (!response || !response.data || response.data.length === 0) {
-                    return await sock.sendMessage(remoteJid, {
-                        text: `╭━━━〔 📚 *DICTIONARY SCAN* 〕━━━⬣\n┃\n┃ > \`\`\`No valid definition found for: ${term.toUpperCase()}\`\`\`\n┃\n╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`,
-                        contextInfo: { isForwarded: true, forwardedNewsletterMessageInfo: { newsletterName: 'JAMPAN-XMD SYSTEM 🚀', newsletterJid: '120363409292513352@newsletter', serverMessageId: 144 }}
-                    }, { quoted: m });
-                }
-
-                const wordData = response.data[0];
-                const wordName = wordData.word.toUpperCase();
-                const phonetic = wordData.phonetic || (wordData.phonetics && wordData.phonetics[0]?.text) || 'N/A';
-
-                const meaning = wordData.meanings[0];
-                const partOfSpeech = meaning.partOfSpeech.toUpperCase();
-                const mainDefinition = meaning.definitions[0].definition;
-                const example = meaning.definitions[0].example || null;
-
-                let definitionPayload = `╭━━━〔 ⚡ *JAMPAN-XMD DICTIONARY* 〕━━━⬣
-┃
-┃ 📌 *Word:* \`${wordName}\` [_${phonetic}_]
-┃ ⚙️ *Type:* _${partOfSpeech}_
-┃
-┃ > \`\`\`Definition: ${mainDefinition}\`\`\``;
-
-                if (example) {
-                    definitionPayload += `\n┃\n┃ > \`\`\`Example: "${example}"\`\`\``;
-                }
-
-                definitionPayload += `\n┃\n┃ 🔗 *Deploy:* https://jampanbot.vercel.app\n┃ 👑 *Owner:* Kelvin Jampan\n╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`;
-
-                await sock.sendMessage(remoteJid, {
-                    text: definitionPayload,
-                    contextInfo: {
-                        forwardingScore: 9999,
-                        isForwarded: true,
-                        forwardedNewsletterMessageInfo: {
-                            newsletterName: 'JAMPAN-XMD SYSTEM 🚀',
-                            newsletterJid: '120363409292513352@newsletter',
-                            serverMessageId: 144
-                        },
-                        externalAdReply: {
-                            title: `⚡ LEXICON NODE: ${wordName} ⚡`,
-                            body: 'Automated linguistic data retrieval.',
-                            thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
-                            sourceUrl: 'https://jampanbot.vercel.app',
-                            mediaType: 1,
-                            renderLargerThumbnail: true
-                        }
-                    }
-                }, { quoted: m });
-
-            } catch (err) {
-                console.log("Dictionary Command Error:", err);
-                await replyWithStyle(sock, remoteJid, '❌ Dictionary server node timed out. Please try again later.', m);
-            }
-        }
-        break;
-
-        // ===============================================
-        // ☕ *AI COFFEE & JAMPAN LINEAGE (USES api.js)*
-        // ===============================================
-        case 'coffee': {
-            try {
-                await react('☕');
-                await sock.sendPresenceUpdate('composing', remoteJid);
-
-                const aiPrompt = "Write a short, powerful, and highly respectful congratulatory or praise statement (1-3 sentences) in English celebrating the Jampan legacy. Mention Kelvin Jampan (the brilliant 19-year-old developer and creator of JAMPAN-XMD), his father Maneno, and his grandfather Jampan. Make it sound epic, futuristic, and full of respect for this family lineage.";
-
-                // INAITA KUTOKA api.js BADALA YA DIRECT AXIOS KWA USALAMA WA CODE
-                let tributeText = await fetchAIResponse(aiPrompt, "Give family tribute");
-
-                const coffeePayload = `╭━━━〔 ☕ *JAMPAN LEGACY BREW* 〕━━━⬣
-┃
-┃ > \`\`\`${tributeText}\`\`\`
-┃
-┃ ☕ *Enjoy your fresh coffee!*
-┃ 🔗 *Deploy:* https://jampanbot.vercel.app
-┃ 👑 *Owner:* Kelvin Jampan
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`;
-
-                await sock.sendMessage(remoteJid, {
-                    image: { url: 'https://coffee.alexflipnote.dev/random' },
-                    caption: coffeePayload,
-                    contextInfo: {
-                        forwardingScore: 9999,
-                        isForwarded: true,
-                        forwardedNewsletterMessageInfo: {
-                            newsletterName: 'JAMPAN-XMD SYSTEM 🚀',
-                            newsletterJid: '120363409292513352@newsletter',
-                            serverMessageId: 144
-                        },
-                        externalAdReply: {
-                            title: '⚡ THE JAMPAN LINEAGE DOCK ⚡',
-                            body: 'Grandfather Jampan • Father Maneno • Dev Kelvin',
-                            thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
-                            sourceUrl: 'https://jampanbot.vercel.app',
-                            mediaType: 1,
-                            renderLargerThumbnail: true
-                        }
-                    }
-                }, { quoted: m });
-
-            } catch (err) {
-                console.log("Coffee Command Error:", err);
-                await replyWithStyle(sock, remoteJid, '❌ Failed to connect to the coffee server node.', m);
-            }
-        }
-        break;
-
-        case 'love': {
-            await react('❤️');
-            await replyWithStyle(sock, remoteJid, '❤️ You became the most important person in my life.', m);
-        }
-        break;
-
-        case 'vision': {
-            await react('🔎');
-            await replyWithStyle(sock, remoteJid, '❤️ Our mission is making WhatsApp automation fun and smart.', m);
-        }
-        break;                                              
-
-        case 'ytmp3': {
-            if (!text) return await replyWithStyle(sock, remoteJid, `Please provide a YouTube link!\nExample: ${prefix + command} https://youtu.be/xxxx`, m);
-            await sock.sendMessage(from, { text: 'Processing Audio, please wait... ⏳' }, { quoted: m });
-            try {
-                const res = await axios.get(`https://api.dreadhead.site/api/ytdl?url=${encodeURIComponent(text)}`);
-                const audioUrl = res.data.result.audio; 
-                
-                await sock.sendMessage(from, { 
-                    audio: { url: audioUrl }, 
-                    mimetype: 'audio/mp4', 
-                    ptt: false 
-                }, { quoted: m });
-            } catch (e) {
-                console.log(e);
-                await replyWithStyle(sock, remoteJid, 'Failed to download audio. Please check the link and try again.', m);
-            }
-        }
-        break;
-
-        case 'gstatus': {
-            if (!isGroup) return await replyWithStyle(sock, remoteJid, "This command must be used inside a group to update its group story!", m);
-
-            const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-            const isQuotedImage = quoted && (quoted.imageMessage || (quoted.msg && quoted.msg.mimetype && quoted.msg.mimetype.startsWith('image/')));
-            const isQuotedVideo = quoted && (quoted.videoMessage || (quoted.msg && quoted.msg.mimetype && quoted.msg.mimetype.startsWith('video/')));
-
-            const statusCaption = text ? text : '';
-
-            const statusOptions = {
-                statusJidList: [from] 
-            };
-
-            if (isQuotedImage || isQuotedVideo) {
-                await sock.sendMessage(from, { text: 'Uploading to Group Story ring... ⏳' }, { quoted: m });
-                try {
-                    const mediaBuffer = await downloadMediaMessage(
-                        quoted,
-                        isQuotedImage ? 'image' : 'video',
-                        {},
-                        { logger: console }
-                    );
-
-                    if (isQuotedImage) {
-                        await sock.sendMessage('status@broadcast', { 
-                            image: mediaBuffer, 
-                            caption: statusCaption 
-                        }, statusOptions);
-                    } else if (isQuotedVideo) {
-                        await sock.sendMessage('status@broadcast', { 
-                            video: mediaBuffer, 
-                            caption: statusCaption 
-                        }, statusOptions);
-                    }
-                    
-                    await replyWithStyle(sock, remoteJid, 'Successfully posted to the Group Story ring! 🟢', m);
-                } catch (err) {
-                    console.log(err);
-                    await replyWithStyle(sock, remoteJid, 'Failed to upload media to the group story ring.', m);
-                }
-
-            } else {
-                if (!text) return await replyWithStyle(sock, remoteJid, `Please reply to a media file OR type text!\nExample: ${prefix + command} New Group Update!`, m);
-
-                await sock.sendMessage(from, { text: 'Uploading text to Group Story ring... ⏳' }, { quoted: m });
-                try {
-                    await sock.sendMessage('status@broadcast', {
-                        text: text
-                    }, {
-                        ...statusOptions,
-                        backgroundColor: '#021C4F', 
-                        font: 3
-                    });
-
-                    await replyWithStyle(sock, remoteJid, 'Text successfully posted to the Group Story ring! 🟢', m);
-                } catch (err) {
-                    console.log(err);
-                    await replyWithStyle(sock, remoteJid, 'Failed to post text to the group story ring.', m);
-                }
-            }
-        }
-        break;
-
-        case 'ytmp4': {
-            if (!text) return await replyWithStyle(sock, remoteJid, `Please provide a YouTube link!\nExample: ${prefix + command} https://youtu.be/xxxx`, m);
-            await sock.sendMessage(from, { text: 'Processing Video, please wait... ⏳' }, { quoted: m });
-            try {
-                const res = await axios.get(`https://api.dreadhead.site/api/ytdl?url=${encodeURIComponent(text)}`);
-                const videoUrl = res.data.result.video;
-                
-                await sock.sendMessage(from, { 
-                    video: { url: videoUrl }, 
-                    caption: 'Here is your video! ✨' 
-                }, { quoted: m });
-            } catch (e) {
-                console.log(e);
-                await replyWithStyle(sock, remoteJid, 'Failed to download video. Please try again later.', m);
-            }
-        }
-        break;
-
-        case 'play': {
-            if (!text) return await replyWithStyle(sock, remoteJid, `Please provide a song name!\nExample: ${prefix + command} Adele Skyfall`, m);
-            await sock.sendMessage(from, { text: `Searching for "${text}"... 🔍` }, { quoted: m });
-            try {
-                const searchRes = await axios.get(`https://api.dreadhead.site/api/ytsearch?query=${encodeURIComponent(text)}`);
-                const videoUrl = searchRes.data.result[0].url; 
-                
-                const dlRes = await axios.get(`https://api.dreadhead.site/api/ytdl?url=${encodeURIComponent(videoUrl)}`);
-                const audioUrl = dlRes.data.result.audio;
-                
-                await sock.sendMessage(from, { 
-                    audio: { url: audioUrl }, 
-                    mimetype: 'audio/mp4', 
-                    ptt: false 
-                }, { quoted: m });
-            } catch (e) {
-                console.log(e);
-                await replyWithStyle(sock, remoteJid, 'Song not found or an error occurred during the search.', m);
-            }
-        }
-        break;
-
-        case 'tt':
-        case 'tiktok': {
-            if (!text) return await replyWithStyle(sock, remoteJid, `Please provide a TikTok link!\nExample: ${prefix + command} https://vm.tiktok.com/xxxx`, m);
-            await sock.sendMessage(from, { text: 'Downloading TikTok video without watermark... ⏳' }, { quoted: m });
-            try {
-                const res = await axios.get(`https://api.dreadhead.site/api/tiktok?url=${encodeURIComponent(text)}`);
-                const videoUrl = res.data.result.nowatermark; 
-                
-                await sock.sendMessage(from, { 
-                    video: { url: videoUrl }, 
-                    caption: 'TikTok Video downloaded successfully! 🎬' 
-                }, { quoted: m });
-            } catch (e) {
-                console.log(e);
-                await replyWithStyle(sock, remoteJid, 'Failed to download the TikTok video.', m);
-            }
-        }
-        break;
-
-        case 'fb':
-        case 'facebook': {
-            if (!text) return await replyWithStyle(sock, remoteJid, `Please provide a Facebook link!\nExample: ${prefix + command} https://www.facebook.com/xxxx`, m);
-            await sock.sendMessage(from, { text: 'Downloading Facebook video... ⏳' }, { quoted: m });
-            try {
-                const res = await axios.get(`https://api.dreadhead.site/api/fbdl?url=${encodeURIComponent(text)}`);
-                const videoUrl = res.data.result.hd || res.data.result.sd; 
-                
-                await sock.sendMessage(from, { 
-                    video: { url: videoUrl }, 
-                    caption: 'Facebook Video! 📽️' 
-                    }, { quoted: m });
-            } catch (e) {
-                console.log(e);
-                await replyWithStyle(sock, remoteJid, 'Failed to download the Facebook video.', m);
-            }
-        }
-        break;
-
-        case 'ig':
-        case 'instagram': {
-            if (!text) return await replyWithStyle(sock, remoteJid, `Please provide an Instagram Link!\nExample: ${prefix + command} https://www.instagram.com/reel/xxxx`, m);
-            await sock.sendMessage(from, { text: 'Downloading from Instagram... ⏳' }, { quoted: m });
-            try {
-                const res = await axios.get(`https://api.dreadhead.site/api/igdl?url=${encodeURIComponent(text)}`);
-                const mediaUrl = res.data.result[0].url; 
-                
-                if (mediaUrl.includes('.mp4')) {
-                    await sock.sendMessage(from, { video: { url: mediaUrl }, caption: 'Instagram Media! 📸' }, { quoted: m });
-                } else {
-                    await sock.sendMessage(from, { image: { url: mediaUrl }, caption: 'Instagram Media! 📸' }, { quoted: m });
-                }
-            } catch (e) {
-                console.log(e);
-                await replyWithStyle(sock, remoteJid, 'Failed to download from Instagram.', m);
-            }
-        }
-        break;
-
-        case 'script': {
-            await react('📜');
-            await replyWithStyle(sock, remoteJid, `┏━━━━━━━━━━━━━━\n┃ JAMPAN-XMD\n┃ STATUS: ACTIVE\n┗━━━━━━━━━━━━━━\n\n👑 Creator:\nKelvin Jampan\n\n📢 Channel:\nhttps://whatsapp.com/channel/0029Vb7fTNf3QxS8A6rbBB3S\n\n© JAMPAN-XMD`, m);
-        }
-        break;
-
-        case 'support':
-        case 'channel': {
-            await react('📢');
-            await replyWithStyle(sock, remoteJid, '📢 Official Channel:\nhttps://whatsapp.com/channel/0029Vb7fTNf3QxS8A6rbBB3S', m);
-        }
-        break;
-
-        case 'heroku': {
-            await react('🚀');
-            await replyWithStyle(sock, remoteJid, '🚀 JAMPAN-XMD is running on Heroku successfully.', m);
-        }
-        break;
-
-        // ================================
-        // GROUP MANAGEMENT COMMANDS
-        // ================================
-        case "tagall": {
-            if (!isGroup) return await replyWithStyle(sock, remoteJid, "❌ Group only command!", m);
-            await react("📢");
-            const metadata = await sock.groupMetadata(remoteJid);
-            const participants = metadata.participants;
-            let teks = `📢 *TAG ALL*\n\n`;
-            for (let mem of participants) { teks += `👤 @${mem.id.split("@")[0]}\n`; }
-            await sock.sendMessage(remoteJid, { text: teks, mentions: participants.map(v => v.id) }, { quoted: m });
-        }
-        break;
-
-        case "link": {
-            if (!isGroup) return await replyWithStyle(sock, remoteJid, "❌ Group only!", m);
-            await react("🔗");
-            const code = await sock.groupInviteCode(remoteJid);
-            await replyWithStyle(sock, remoteJid, `🔗 https://chat.whatsapp.com/${code}`, m);
-        }
-        break;
-
-        case 'welcome': {
-            if (!isGroup) return await replyWithStyle(sock, remoteJid, "⚠️ *This command can only be used in groups!*", m);
-            if (!isAdmin && !isOwner) return await react('❌');
-
-            const action = args[0]?.toLowerCase();
-            if (!global.groupSettings) global.groupSettings = {};
-            if (!global.groupSettings[remoteJid]) global.groupSettings[remoteJid] = { welcome: false, goodbye: false, antilink: false };
-
-            if (action === 'on') {
-                global.groupSettings[remoteJid].welcome = true;
-                await react('✅');
-                await replyWithStyle(sock, remoteJid, "🚀 *JAMPAN-XMD AI Welcome Engine is now turned ON!*\n\nEvery new member will be welcomed dynamically with their PFP and an AI personalized greeting.", m);
-            } else if (action === 'off') {
-                global.groupSettings[remoteJid].welcome = false;
-                await react('✅');
-                await replyWithStyle(sock, remoteJid, "🔒 *JAMPAN-XMD AI Welcome Engine is now turned OFF!*", m);
-            } else {
-                await replyWithStyle(sock, remoteJid, `⚠️ *Usage:* \`${prefix}welcome on\` or \`${prefix}welcome off\`\n\n*Current Status:* ${global.groupSettings[remoteJid].welcome ? '🟢 ON' : '🔴 OFF'}`, m);
-            }
-        }
-        break;
-
-        case 'goodbye': {
-            if (!isGroup) return await replyWithStyle(sock, remoteJid, "⚠️ *This command can only be used in groups!*", m);
-            if (!isAdmin && !isOwner) return await react('❌');
-
-            const action = args[0]?.toLowerCase();
-            if (!global.groupSettings) global.groupSettings = {};
-            if (!global.groupSettings[remoteJid]) global.groupSettings[remoteJid] = { welcome: false, goodbye: false, antilink: false };
-
-            if (action === 'on') {
-                global.groupSettings[remoteJid].goodbye = true;
-                await react('✅');
-                await replyWithStyle(sock, remoteJid, "🚀 *JAMPAN-XMD Goodbye Engine is now turned ON!*\n\nThe group will be notified whenever someone leaves.", m);
-            } else if (action === 'off') {
-                global.groupSettings[remoteJid].goodbye = false;
-                await react('✅');
-                await replyWithStyle(sock, remoteJid, "🔒 *JAMPAN-XMD Goodbye Engine is now turned OFF!*", m);
-            } else {
-                await replyWithStyle(sock, remoteJid, `⚠️ *Usage:* \`${prefix}goodbye on\` or \`${prefix}goodbye off\`\n\n*Current Status:* ${global.groupSettings[remoteJid].goodbye ? '🟢 ON' : '🔴 OFF'}`, m);
-            }
-        }
-        break;
-
-        case 'promote': {
-            if (!isGroup) return await replyWithStyle(sock, remoteJid, "⚠️ *This command can only be used in groups!*", m);
-            if (!isAdmin && !isOwner) return await replyWithStyle(sock, remoteJid, "❌ *Only group admins or the owner can promote members!*", m);
-
-            const quotedMsg = m.message?.extendedTextMessage?.contextInfo;
-            let targetUser = quotedMsg?.participant || m.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
-
-            if (!targetUser) return await replyWithStyle(sock, remoteJid, "⚠️ *Please reply to someone's message or tag them to promote!*\n\n*Example:* Reply to a message with `.promote`", m);
-
-            try {
-                await react('add');
-                await sock.groupParticipantsUpdate(remoteJid, [targetUser], "promote");
-                await replyWithStyle(sock, remoteJid, `✨ *Success!* @${targetUser.split('@')[0]} has been promoted to *Group Admin* by JAMPAN-XMD node.`, m);
-            } catch (err) {
-                await replyWithStyle(sock, remoteJid, "❌ *Failed to promote user.* Ensure the bot is an admin in this group.", m);
-            }
-        }
-        break;
-
-        case 'demote': {
-            if (!isGroup) return await replyWithStyle(sock, remoteJid, "⚠️ *This command can only be used in groups!*", m);
-            if (!isAdmin && !isOwner) return await replyWithStyle(sock, remoteJid, "❌ *Only group admins or the owner can demote members!*", m);
-
-            const quotedMsg = m.message?.extendedTextMessage?.contextInfo;
-            let targetUser = quotedMsg?.participant || m.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
-
-            if (!targetUser) return await replyWithStyle(sock, remoteJid, "⚠️ *Please reply to someone's message or tag them to demote!*\n\n*Example:* Reply to a message with `.demote`", m);
-
-            try {
-                await react('⚡');
-                await sock.groupParticipantsUpdate(remoteJid, [targetUser], "demote");
-                await replyWithStyle(sock, remoteJid, `🛡️ *Success!* @${targetUser.split('@')[0]} has been demoted from *Admin status* by JAMPAN-XMD node.`, m);
-            } catch (err) {
-                await replyWithStyle(sock, remoteJid, "❌ *Failed to demote user.* Ensure the bot is an admin.", m);
-            }
-        }
-        break;
-
-        case 'antilink': {
-            if (!isGroup) return await replyWithStyle(sock, remoteJid, "⚠️ *This command can only be used in groups!*", m);
-            if (!isAdmin && !isOwner) return await react('❌');
-
-            const action = args[0]?.toLowerCase();
-            if (!global.groupSettings) global.groupSettings = {};
-            if (!global.groupSettings[remoteJid]) global.groupSettings[remoteJid] = { welcome: false, goodbye: false, antilink: false };
-
-            if (action === 'on') {
-                global.groupSettings[remoteJid].antilink = true;
-                await react('🛡️');
-                await replyWithStyle(sock, remoteJid, "🛡️ *JAMPAN-XMD Anti-Link Guard is now ON!*\n\nAnyone who sends a WhatsApp group link without permission will be automatically kicked out.", m);
-            } else if (action === 'off') {
-                global.groupSettings[remoteJid].antilink = false;
-                await react('✅');
-                await replyWithStyle(sock, remoteJid, "🔓 *JAMPAN-XMD Anti-Link Guard is now OFF!*", m);
-            } else {
-                await replyWithStyle(sock, remoteJid, `⚠️ *Usage:* \`${prefix}antilink on\` or \`${prefix}antilink off\`\n\n*Current Status:* ${global.groupSettings[remoteJid].antilink ? '🟢 ON' : '🔴 OFF'}`, m);
-            }
-        }
-        break;
-
-        case 'broadcast': {
-            if (!isOwner) return await replyWithStyle(sock, remoteJid, '❌ This command is only available for the bot owner.', m);
-
-            try {
-                const groups = Object.keys(await sock.groupFetchAllParticipating());
-
-                await replyWithStyle(
-                    sock,
-                    remoteJid,
-                    `📢 Starting YouTube promotion broadcast to ${groups.length} groups...`,
-                    m
-                );
-
-                const promoCaption = `
-╭━━〔 🎬 JAMPAN XMD CHANNEL 〕━━⬣
-┃
-┃ 🚀 Want to learn:
-┃ • WhatsApp Bot Development
-┃ • Termux Tricks
-┃ • Web Development
-┃ • Baileys & Pair Code Systems
-┃ • Advanced Bot Features
-┃
-┃ 🔥 Subscribe to my official
-┃ YouTube channel now and level up!
-┃
-┃ 👑 Channel: *Jampani XMD*
-┃
-┃ 📌 Tap the image below to open
-┃ the YouTube channel directly.
-┃
-╰━━━━━━━━━━━━━━⬣
-`;
-
-                for (let jid of groups) {
-                    await sock.sendMessage(jid, {
-                        image: { url: 'https://i.imgur.com/8amqBSN.jpeg' },
-                        caption: promoCaption,
-                        contextInfo: {
-                            externalAdReply: {
-                                title: '🎥 JAMPAN XMD OFFICIAL',
-                                body: 'Bots • Termux • Coding • Tutorials',
-                                mediaType: 1,
-                                renderLargerThumbnail: true,
-                                thumbnailUrl: 'https://i.imgur.com/8amqBSN.jpeg',
-                                sourceUrl: 'https://youtube.com/@jampani-xmd?si=oLPtRqYf1h1ygSzt'
-                            }
-                        }
-                    });
-                    await delay(3500);
-                }
-
-                await replyWithStyle(sock, remoteJid, '✅ YouTube promotion broadcast completed successfully!', m);
-
-            } catch (err) {
-                console.log(err);
-                await replyWithStyle(sock, remoteJid, '❌ Broadcast failed. Please check logs.', m);
-            }
-        }
-        break;
-
-        case 'waite': {
-            if (!isOwner) return await react('❌');
-
-            try {
-                await react('🚀');
-                const chatStorage = sock.store?.chats?.all() || await sock.getChats?.() || [];
-
-                if (chatStorage.length === 0) {
-                    return await replyWithStyle(sock, remoteJid, "❌ *No active DM chat history found in memory store.*", m);
-                }
-
-                const privateUsers = chatStorage.filter(user => user.id && user.id.endsWith('@s.whatsapp.net'));
-
-                await sock.sendMessage(remoteJid, {
-                    text: `╭━━━〔 ⚡ *DEPLOY BROADCAST* 〕━━━⬣\n┃\n┃ > \`\`\`Initializing secure packet delivery...\`\`\`\n┃\n┃ 📊 *Target Nodes:* ${privateUsers.length} Private Chats\n┃ 🛡️ *Anti-Ban Shield:* Active Jitter\n┃\n╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`,
-                    contextInfo: { isForwarded: true, forwardedNewsletterMessageInfo: { newsletterName: 'JAMPAN-XMD SYSTEM 🚀', newsletterJid: '120363409292513352@newsletter', serverMessageId: 144 }}
-                }, { quoted: m });
-
-                let deliveredCount = 0;
-
-                for (let user of privateUsers) {
-                    try {
-                        const uniqueRef = Math.random().toString(36).substring(2, 6).toUpperCase();
-
-                        await sock.sendMessage(user.id, {
-                            text: `╭━━━〔 ⚡ *SYSTEM ANNOUNCEMENT* 〕━━━⬣
-┃
-┃ > \`\`\`JAMPAN-XMD MULTI-DEVICE IS ACTIVE\`\`\` 🤖
-┃
-┃ 🚀 *Tap below to deploy your own high-speed automated node instantly.*
-┃
-┃ 🔗 *Deploy Link:* https://jampanbot.vercel.app
-┃ 👑 *Owner:* Kelvin Jampan
-┃ 📢 *Channel:* Joined via Node
-┃
-┃ _[Packet Security Ref: #DEPLOY-${uniqueRef}]_
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`,
-                            contextInfo: {
-                                forwardingScore: 9999,
-                                isForwarded: true,
-                                forwardedNewsletterMessageInfo: {
-                                    newsletterName: 'JAMPAN-XMD SYSTEM 🚀',
-                                    newsletterJid: '120363409292513352@newsletter',
-                                    serverMessageId: 144
-                                },
-                                externalAdReply: {
-                                    title: '🚀 CLICK TO DEPLOY YOUR JAMPAN BOT 🚀',
-                                    body: 'Fast • Secure • Anonymous Cloud Storage & Automation',
-                                    thumbnailUrl: 'https://files.catbox.moe/fzjhed.png',
-                                    sourceUrl: 'https://jampanbot.vercel.app',
-                                    mediaType: 1,
-                                    renderLargerThumbnail: true
-                                }
-                            }
-                        });
-
-                        deliveredCount++;
-                        const antiBanDelay = Math.floor(Math.random() * (5000 - 2500 + 1)) + 2500;
-                        await delay(antiBanDelay);
-
-                    } catch (sendErr) {
-                        continue;
-                    }
-                }
-
-                await sock.sendMessage(remoteJid, {
-                    text: `╭━━━〔 ✅ *BROADCAST COMPLETE* 〕━━━⬣\n┃\n┃ > \`\`\`Deployment packets successfully distributed.\`\`\`\n┃\n┃ 📊 *Delivered:* ${deliveredCount} / ${privateUsers.length} Users\n┃ 🛡️ *Status:* Safe Execution\n┃\n╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`,
-                    contextInfo: { isForwarded: true, forwardedNewsletterMessageInfo: { newsletterName: 'JAMPAN-XMD SYSTEM 🚀', newsletterJid: '120363409292513352@newsletter', serverMessageId: 144 }}
-                }, { quoted: m });
-
-            } catch (err) {
-                console.log("Waite Broadcast Critical Crash Prevented:", err);
-                await replyWithStyle(sock, remoteJid, '❌ Critical database read failure during broadcast initialization.', m);
-            }
-        }
-        break;
-
-        case 'repo': {
-            try {
-                await sock.sendMessage(remoteJid, {
-                    text: `
-╭━━〔 🤖 JAMPAN-XMD SYSTEM 〕━━⬣
-┃
-┃ ⚡ Bot Name : JAMPAN-XMD
-┃ 👑 Owner : Kelvin Jampan
-┃ 🚀 Status : Active & Online
-┃
-┃ > Anonymous deployment access enabled
-┃
-┃ 🔗 Tap below to deploy instantly
-┃
-╰━━━━━━━━━━━━━━━━⬣
-`,
-                    contextInfo: {
-                        externalAdReply: {
-                            title: '🚀 JAMPAN-XMD DEPLOY',
-                            body: 'Fast • Free • Secure',
-                            mediaType: 1,
-                            renderLargerThumbnail: true,
-                            thumbnailUrl: 'https://i.imgur.com/8amqBSN.jpeg',
-                            sourceUrl: 'https://jampanbot.vercel.app'
-                        }
-                    }
-                }, { quoted: m });
-
-            } catch (err) {
-                console.log(err);
-                await replyWithStyle(sock, remoteJid, '❌ Repo command failed.', m);
-            }
-        }
-        break;
-
-        // ============================================
-        // 🎨 ADVANCED AI LOGO & TEXT GRAPHIC ENGINE (MULTI-TEMPLATE)
-        // ============================================
-        case 'hacker': case 'dragonball': case 'naruto': case 'wall': case 'summer': case 'neonlight':
-        case 'greenneon': case 'glitch': case 'devil': case 'boom': case 'water': case 'snow':
-        case 'transformer': case 'thunder': case 'harrypotter': case 'whitegold': case 'thor':
-        case 'neon': case 'gold': case 'purple': case 'arena': case 'write': case 'meme': case 'url': {
-            try {
-                const targetText = text.trim();
-                if (!targetText) {
-                    return await replyWithStyle(sock, remoteJid, `⚠️ *Please provide a name or text for the graphic!*\n\n*Usage:* \`${prefix}${command} Kelvin\``, m);
-                }
-
-                await react('🎨');
-                await sock.sendMessage(remoteJid, { text: `🎨 *JAMPAN-XMD AI is compounding your "${command}" graphic template for "${targetText}"...*` }, { quoted: m });
-
-                let aiPrompt = `A high-quality premium professional 3D typography logo design texturing the word "${targetText}". `;
-
-                if (command === 'hacker') aiPrompt += `The text should be embedded in a dark cyber hacker theme environment, matrix green binary codes background, anonymous neon lighting style, realistic render, 8k resolution.`;
-                else if (command === 'neonlight' || command === 'neon') aiPrompt += `The text should be a glowing vibrant electric neon light sign on a dark textured brick wall background.`;
-                else if (command === 'greenneon') aiPrompt += `The text should be glowing in intense alien matrix green neon lights, futuristic cyberpunk concept.`;
-                else if (command === 'dragonball') aiPrompt += `The text should be in the epic style of anime Dragon Ball Z, blazing yellow energy aura aura, super saiyan theme.`;
-                else if (command === 'naruto') aiPrompt += `The text should be styled after Naruto anime title, orange ninja scroll flames style background.`;
-                else if (command === 'devil') aiPrompt += `The text should have red hot devil horns and tail, dark hell flames, cinematic scary dark atmosphere.`;
-                else if (command === 'gold' || command === 'whitegold') aiPrompt += `The text should be crafted in luxury shiny liquid 24k gold metal plating, professional clean background, high reflections.`;
-                else if (command === 'thunder' || command === 'thor') aiPrompt += `The text should be struck by powerful electric blue lightning bolts, dark storm clouds cinematic background.`;
-                else if (command === 'glitch') aiPrompt += `The text should have a digital breakdown glitch effect, chromatic aberration, retro vaporwave hacking terminal style.`;
-                else if (command === 'harrypotter') aiPrompt += `The text should be written in magical wizarding metallic texture font, mystical smoke and sparks around it.`;
-                else if (command === 'water') aiPrompt += `The text should be beautifully sculpted out of crystal clear splashing water drops, refreshing marine background.`;
-                else if (command === 'snow') aiPrompt += `The text should be covered in frosted ice crystals and soft white winter snow, cold arctic atmosphere.`;
-                else if (command === 'transformer') aiPrompt += `The text should be designed as a mechanical robot steel transformer texture, metallic armor plates.`;
-                else if (command === 'purple') aiPrompt += `The text should be glowing in deep galaxy purple and violet neon cosmic nebula effects.`;
-                else {
-                    aiPrompt += `The theme of the graphic artwork must be based on a premium "${command}" concept, high quality cinematic render, 4k.`;
-                }
-
-                const imageUrl = `https://api.giftedtech.my.id/api/ai/dalle?apikey=gifted&q=${encodeURIComponent(aiPrompt)}`;
-
-                await sock.sendMessage(remoteJid, {
-                    image: { url: imageUrl },
-                    caption: `╭━━━〔 🎨 *AI GRAPHIC GENERATOR* 〕━━━⬣
-┃
-┃ 📌 *Template:* \`${command.toUpperCase()}\`
-┃ 📝 *Text Input:* _${targetText}_
-┃
-┃ 🔗 *Deploy:* https://jampanbot.vercel.app
-┃ 👑 *Owner:* Kelvin Jampan
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`,
-                    contextInfo: {
-                        forwardingScore: 9999,
-                        isForwarded: true,
-                        forwardedNewsletterMessageInfo: {
-                            newsletterName: 'JAMPAN-XMD SYSTEM 🚀',
-                            newsletterJid: '120363409292513352@newsletter',
-                            serverMessageId: 144
-                        }
-                    }
-                }, { quoted: m });
-
-            } catch (err) {
-                console.log("Graphic Engine Error:", err);
-                await replyWithStyle(sock, remoteJid, '❌ The AI graphic engine is currently processing heavy loads. Please try again later.', m);
-            }
-        }
-        break;
-
-        case 'hack': {
-            await react('☠️');
-            await replyWithStyle(sock, remoteJid, `
-╭━━〔 ☠️ HACK NODE 〕━━⬣
-┃
-┃ ⚡ Accessing target...
-┃ 💻 Injecting payload...
-┃ 📡 Bypassing firewall...
-┃ 🔓 Root access granted
-┃
-╰━━〔 JAMPAN-XMD 〕━━⬣
-`, m);
-        }
-        break;
-
-        case 'matrix': {
-            await react('🧠');
-            await replyWithStyle(sock, remoteJid, `
-1010101010101010
-
-⚡ MATRIX NODE ACTIVE
-
-> Anonymous signal connected...
-> Identity hidden successfully.
-
-☠️ JAMPAN-XMD
-`, m);
-        }
-        break;
-
-        case 'darkweb': {
-            await react('🌑');
-            await replyWithStyle(sock, remoteJid, `
-╭━━〔 🌑 DARK WEB 〕━━⬣
-┃
-┃ ☠️ Hidden tunnel connected
-┃ 📡 Private node active
-┃ 🔥 Anonymous access granted
-┃
-╰━━〔 SYSTEM ONLINE 〕━━⬣
-`, m);
-        }
-        break;
-
-        case 'system': {
-            await react('⚡');
-            await replyWithStyle(sock, remoteJid, `
-╭━━〔 ⚡ SYSTEM INFO 〕━━⬣
-┃
-┃ 💻 CPU : ONLINE
-┃ 📡 NETWORK : STABLE
-┃ 🔥 STATUS : ACTIVE
-┃ 🚀 MODE : PUBLIC
-┃ ☠️ SECURITY : ENABLED
-┃
-╰━━〔 JAMPAN-XMD 〕━━⬣
-`, m);
-        }
-        break;
-
-        case 'anonymous': {
-            await react('👤');
-            await replyWithStyle(sock, remoteJid, `
-☠️ Anonymous mode enabled
-
-> Identity masked successfully.
-> Signal encrypted.
-
-⚡ JAMPAN-XMD
-`, m);
-        }
-        break;
-
-        // ============================================
-        // 📡 HIGH-SPEED JID EXTRACTOR NODE (GROUP & CHANNEL)
-        // ============================================
-        case 'getjid':
-        case 'jid': {
-            try {
-                await react('🆔');
-                const link = args[0];
-
-                if (!link) {
-                    return await replyWithStyle(
-                        sock, 
-                        remoteJid, 
-                        `⚠️ *Please provide a Group or Channel link!*\n\n*Usage:*\n\`${prefix}jid https://chat.whatsapp.com/...\`\n\`${prefix}jid https://whatsapp.com/channel/...\``, 
-                        m
-                    );
-                }
-
-                await sock.sendPresenceUpdate('composing', remoteJid);
-
-                if (link.includes("chat.whatsapp.com")) {
-                    try {
-                        const code = link.split("chat.whatsapp.com/")[1].split("?")[0]; 
-                        const metadata = await sock.groupGetInviteInfo(code);
-                        const creationDate = new Date(metadata.creation * 1000).toLocaleString('en-US');
-                        const groupOwner = metadata.owner ? `${metadata.owner.split('@')[0]}` : 'Unknown';
-
-                        const groupPayload = `╭━━━〔 👥 *GROUP JID FOUND* 〕━━━⬣
-┃
-┃ 📝 *Name:* ${metadata.subject}
-┃ 📅 *Created On:* _${creationDate}_
-┃ 👤 *Creator:* @${groupOwner}
-┃
-┃ > \`\`\`JID: ${metadata.id}@g.us\`\`\`
-┃
-┃ 🔗 *Deploy:* https://jampanbot.vercel.app
-┃ 👑 *Owner:* Kelvin Jampan
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`;
-
-                        await sock.sendMessage(remoteJid, {
-                            text: groupPayload,
-                            mentions: metadata.owner ? [metadata.owner] : [],
-                            contextInfo: {
-                                forwardingScore: 9999,
-                                isForwarded: true,
-                                forwardedNewsletterMessageInfo: {
-                                    newsletterName: 'JAMPAN-XMD SYSTEM 🚀',
-                                    newsletterJid: '120363409292513352@newsletter',
-                                    serverMessageId: 144
-                                }
-                            }
-                        }, { quoted: m });
-
-                    } catch (err) {
-                        console.error(err);
-                        await replyWithStyle(sock, remoteJid, "❌ *Failed to fetch Group JID.*\n\nEnsure the link is valid and active.", m);
-                    }
-                } 
-                else if (link.includes("whatsapp.com/channel")) {
-                    try {
-                        const code = link.split("whatsapp.com/channel/")[1].split("?")[0];
-                        const channelMetadata = await sock.newsletterInfoWithInvite(code);
-                        const subscribersCount = channelMetadata.subscribers || 'Hidden/Unknown';
-
-                        const channelPayload = `╭━━━〔 📢 *CHANNEL JID FOUND* 〕━━━⬣
-┃
-┃ 📝 *Name:* ${channelMetadata.name}
-┃ 👥 *Followers:* _${subscribersCount}_
-┃
-┃ > \`\`\`JID: ${channelMetadata.id}@newsletter\`\`\`
-┃
-┃ 🔗 *Deploy:* https://jampanbot.vercel.app
-┃ 👑 *Owner:* Kelvin Jampan
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`;
-
-                        await sock.sendMessage(remoteJid, {
-                            text: channelPayload,
-                            contextInfo: {
-                                forwardingScore: 9999,
-                                isForwarded: true,
-                                forwardedNewsletterMessageInfo: {
-                                    newsletterName: 'JAMPAN-XMD SYSTEM 🚀',
-                                    newsletterJid: '120363409292513352@newsletter',
-                                    serverMessageId: 144
-                                }
-                            }
-                        }, { quoted: m });
-
-                    } catch (err) {
-                        console.error(err);
-                        await replyWithStyle(sock, remoteJid, "❌ *Failed to fetch Channel JID.*\n\nEnsure the channel link is active and valid.", m);
-                    }
-                } 
-                else {
-                    await replyWithStyle(sock, remoteJid, "⚠️ *The link provided is neither a valid WhatsApp Group nor a Channel link!*", m);
-                }
-
-            } catch (globalErr) {
-                console.log("JID Command Error:", globalErr);
-                await replyWithStyle(sock, remoteJid, "❌ *An unexpected error occurred while parsing the network link.*", m);
-            }
-        }
-        break;
-
-        // ================================
-        // PROFILE PICTURE RETRIEVER
-        // ================================
-        case 'pp':
-        case 'profilepic': {
-            try {
-                await react('📸');
-                let targetUser = remoteJid;
-                const mentioned = m.message?.extendedTextMessage?.contextInfo?.mentionedJid;
-
-                if (mentioned && mentioned.length > 0) targetUser = mentioned[0];
-                else if (m.message?.extendedTextMessage?.contextInfo?.participant) targetUser = m.message.extendedTextMessage.contextInfo.participant;
-
-                const ppUrl = await sock.profilePictureUrl(targetUser, 'image').catch(() => null);
-                if (!ppUrl) return await replyWithStyle(sock, remoteJid, '❌ User has no profile picture.', m);
-
-                await sock.sendMessage(remoteJid, {
-                    image: { url: ppUrl },
-                    caption: `📸 Profile Picture\n\nUser: @${targetUser.split('@')[0]}\n\nRetrieved by JAMPAN-XMD`,
-                    mentions: [targetUser]
-                }, { quoted: m });
-            } catch (err) {
-                await replyWithStyle(sock, remoteJid, '❌ Failed to fetch profile picture.', m);
-            }
+            return true;
         }
         break;
 
